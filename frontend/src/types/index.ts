@@ -2,10 +2,12 @@
 export type UserRole = 'customer' | 'technician' | 'admin';
 
 export interface User {
+  _id?: string;
   id: string;
   phone: string;
   email?: string;
   name: string;
+  nationalId?: string;
   role: UserRole;
   avatar?: string;
   createdAt: string;
@@ -26,7 +28,7 @@ export interface Vehicle {
 }
 
 // Order types
-export type OrderStatus = 'planned' | 'in_progress' | 'waiting_for_parts' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'planned' | 'in_progress' | 'waiting_for_parts' | 'completed' | 'cancelled';
 export type OrderPriority = 'normal' | 'high' | 'urgent';
 
 export interface TimelineStep {
@@ -222,6 +224,7 @@ export type IssueType = typeof ISSUE_TYPES[number];
 
 // Status labels
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: 'در انتظار تایید',
   planned: 'برنامه‌ریزی شده',
   in_progress: 'در حال انجام',
   waiting_for_parts: 'در انتظار قطعه',

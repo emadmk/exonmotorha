@@ -407,24 +407,28 @@ export function TechnicianDashboard() {
                   </div>
 
                   {/* Location */}
-                  <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
-                    <MapPin className="w-5 h-5 text-dark-400" />
-                    <div className="flex-1">
-                      <p className="text-white">{selectedOrder.location}</p>
-                      <p className="text-sm text-dark-400">آدرس</p>
+                  {selectedOrder.location && (
+                    <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
+                      <MapPin className="w-5 h-5 text-dark-400" />
+                      <div className="flex-1">
+                        <p className="text-white">{selectedOrder.location.address || 'آدرس ثبت نشده'}</p>
+                        <p className="text-sm text-dark-400">آدرس</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Schedule */}
-                  <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
-                    <Calendar className="w-5 h-5 text-dark-400" />
-                    <div>
-                      <p className="text-white">
-                        {formatDateSmart(selectedOrder.scheduledDate)} - {selectedOrder.scheduledTime}
-                      </p>
-                      <p className="text-sm text-dark-400">زمان مراجعه</p>
+                  {selectedOrder.scheduledDate && (
+                    <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
+                      <Calendar className="w-5 h-5 text-dark-400" />
+                      <div>
+                        <p className="text-white">
+                          {formatDateSmart(selectedOrder.scheduledDate)}{selectedOrder.scheduledTime && ` - ${selectedOrder.scheduledTime}`}
+                        </p>
+                        <p className="text-sm text-dark-400">زمان مراجعه</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Issues */}
                   <div>

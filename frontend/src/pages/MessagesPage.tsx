@@ -121,7 +121,8 @@ export function MessagesPage() {
   };
 
   const getOtherParticipant = (conv: Conversation) => {
-    return conv.participants.find(p => p._id !== user?._id) || conv.participants[0];
+    const userId = user?.id || user?._id;
+    return conv.participants.find(p => (typeof p === 'string' ? p : (p as any)._id) !== userId) || conv.participants[0];
   };
 
   const getRoleIcon = (role: string) => {
@@ -245,7 +246,9 @@ export function MessagesPage() {
       {/* Messages */}
       <main className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => {
-          const isMe = msg.senderId === user?._id;
+          const userId = user?.id || user?._id;
+          const senderId = typeof msg.senderId === 'string' ? msg.senderId : (msg.senderId as any)?._id;
+          const isMe = senderId === userId;
           return (
             <div
               key={msg._id}

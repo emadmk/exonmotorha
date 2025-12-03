@@ -4,7 +4,7 @@ import { Circle, Clock, Package, CheckCircle, XCircle } from 'lucide-react';
 
 interface StatusChipProps {
   status: OrderStatus;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
 }
 
@@ -12,6 +12,10 @@ const statusConfig: Record<OrderStatus, {
   class: string;
   icon: typeof Circle;
 }> = {
+  pending: {
+    class: 'chip-planned',
+    icon: Clock,
+  },
   planned: {
     class: 'chip-planned',
     icon: Circle,
@@ -43,10 +47,11 @@ export function StatusChip({ status, size = 'md', showIcon = true }: StatusChipP
       className={cn(
         'chip',
         config.class,
-        size === 'sm' && 'text-xs px-2 py-0.5'
+        size === 'sm' && 'text-xs px-2 py-0.5',
+        size === 'lg' && 'text-base px-4 py-2'
       )}
     >
-      {showIcon && <Icon className={cn('w-3.5 h-3.5', size === 'sm' && 'w-3 h-3')} />}
+      {showIcon && <Icon className={cn('w-3.5 h-3.5', size === 'sm' && 'w-3 h-3', size === 'lg' && 'w-5 h-5')} />}
       <span>{ORDER_STATUS_LABELS[status]}</span>
     </span>
   );

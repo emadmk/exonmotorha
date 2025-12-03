@@ -325,12 +325,13 @@ export function OrderDetailPage() {
         )}
 
         {/* Estimated Cost */}
-        {order.estimatedCost && (
+        {order.estimatedCostMin && (
           <GlassCard padding="md">
             <div className="flex items-center justify-between">
               <span className="text-dark-400">هزینه تخمینی</span>
               <span className="text-lg font-bold text-gold-500">
-                {formatCurrency(order.estimatedCost)}
+                {formatCurrency(order.estimatedCostMin)}
+                {order.estimatedCostMax && ` - ${formatCurrency(order.estimatedCostMax)}`}
               </span>
             </div>
           </GlassCard>

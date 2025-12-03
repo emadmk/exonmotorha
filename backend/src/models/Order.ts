@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type OrderStatus = 'planned' | 'in_progress' | 'waiting_for_parts' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'planned' | 'in_progress' | 'waiting_for_parts' | 'completed' | 'cancelled';
 export type OrderPriority = 'normal' | 'high' | 'urgent';
 
 export interface ITimelineStep {
@@ -85,8 +85,8 @@ const orderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      enum: ['planned', 'in_progress', 'waiting_for_parts', 'completed', 'cancelled'],
-      default: 'planned',
+      enum: ['pending', 'planned', 'in_progress', 'waiting_for_parts', 'completed', 'cancelled'],
+      default: 'pending',
       index: true,
     },
     priority: {
