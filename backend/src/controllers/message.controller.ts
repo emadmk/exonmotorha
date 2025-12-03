@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { Conversation, Message, User, Order } from '../models';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { smsService } from '../services/sms.service';
 import mongoose from 'mongoose';
 
 /**
@@ -229,6 +230,28 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
 
     // Populate sender info
     await message.populate('senderId', 'name avatar role');
+
+    // Send SMS notification to the other participant (for technician conversations)
+    if (conversation.type === 'technician' && userRole === 'customer') {
+      // Customer is sending to technician - notify technician via SMS
+      const otherParticipantId = conversation.participants.find(
+        (p) => p.toString() !== userId
+      );
+      if (otherParticipantId) {
+        const technician = await User.findById(otherParticipantId);
+        const sender = await User.findById(userId);
+        if (technician?.phone && conversation.orderId) {
+          const order = await Order.findById(conversation.orderId);
+          if (order) {
+            await smsService.sendNewMessageToTechnician(
+              technician.phone,
+              sender?.name || 'مشتری',
+              order.orderNumber
+            );
+          }
+        }
+      }
+    }
 
     res.status(201).json({
       success: true,

@@ -17,7 +17,7 @@ import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/Button';
 import { BottomNav } from '../components/layout/BottomNav';
 import { useAuthStore } from '../stores/authStore';
-import { orderAPI, notificationAPI } from '../services/api';
+import { orderAPI, notificationAPI, messageAPI } from '../services/api';
 import { Order, TimelineStep } from '../types';
 import {
   formatDateSmart,
@@ -33,6 +33,7 @@ export function Dashboard() {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -68,6 +69,23 @@ export function Dashboard() {
       return tech.name || 'تکنسین';
     }
     return null;
+  };
+
+  const handleStartChat = async () => {
+    if (!currentOrder || isStartingChat) return;
+
+    setIsStartingChat(true);
+    try {
+      const response = await messageAPI.startOrderChat(currentOrder._id);
+      navigate('/messages', { state: { conversationId: response.data.conversation._id } });
+    } catch (error: any) {
+      console.error('Error starting chat:', error);
+      if (error.response?.status === 400) {
+        alert('هنوز تکنسینی به این سفارش اختصاص نیافته');
+      }
+    } finally {
+      setIsStartingChat(false);
+    }
   };
 
   return (
@@ -213,12 +231,17 @@ export function Dashboard() {
                           </p>
                         </div>
                       </div>
-                      <Link
-                        to="/messages"
-                        className="p-2 bg-dark-800 rounded-xl hover:bg-dark-700 transition-colors"
+                      <button
+                        onClick={handleStartChat}
+                        disabled={isStartingChat}
+                        className="p-2 bg-dark-800 rounded-xl hover:bg-dark-700 transition-colors disabled:opacity-50"
                       >
-                        <MessageCircle className="w-5 h-5 text-gold-500" />
-                      </Link>
+                        {isStartingChat ? (
+                          <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <MessageCircle className="w-5 h-5 text-gold-500" />
+                        )}
+                      </button>
                     </GlassCard>
                   </div>
                 )}

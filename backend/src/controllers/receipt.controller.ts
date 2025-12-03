@@ -1,7 +1,8 @@
 import { Response } from 'express';
-import { Receipt, Order, Notification } from '../models';
+import { Receipt, Order, Notification, User } from '../models';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { paymentService } from '../services/payment.service';
+import { smsService } from '../services/sms.service';
 import { config } from '../config';
 import mongoose from 'mongoose';
 
@@ -160,6 +161,12 @@ export const createReceipt = async (req: AuthRequest, res: Response): Promise<vo
       type: 'payment',
       relatedOrderId: orderId,
     });
+
+    // Send SMS to customer
+    const customer = await User.findById(order.userId);
+    if (customer?.phone) {
+      await smsService.sendReceiptCreated(customer.phone, receipt.receiptNumber, totalAmount);
+    }
 
     res.status(201).json({
       success: true,

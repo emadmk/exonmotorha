@@ -88,7 +88,10 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
 
     const order = await Order.create(orderData);
 
-    // Create notification for admins
+    // Get customer info for SMS
+    const customer = await User.findById(userId);
+
+    // Create notification for admins and send SMS
     const admins = await User.find({ role: 'admin' });
     for (const admin of admins) {
       await Notification.create({
@@ -98,6 +101,15 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         type: 'order_update',
         relatedOrderId: order._id,
       });
+
+      // Send SMS to admin
+      if (admin.phone) {
+        await smsService.sendNewOrderToAdmin(
+          admin.phone,
+          order.orderNumber,
+          customer?.name || 'مشتری'
+        );
+      }
     }
 
     res.status(201).json({
@@ -308,7 +320,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
     order.notes = reason || 'لغو توسط مشتری';
     await order.save();
 
-    // Notify admin
+    // Notify admin via notification and SMS
     const admins = await User.find({ role: 'admin' });
     for (const admin of admins) {
       await Notification.create({
@@ -318,6 +330,30 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
         type: 'order_update',
         relatedOrderId: order._id,
       });
+
+      // Send SMS to admin
+      if (admin.phone) {
+        await smsService.sendOrderCancelled(admin.phone, order.orderNumber, 'admin');
+      }
+    }
+
+    // If technician was assigned, notify them too
+    if (order.technicianId) {
+      const technician = await User.findById(order.technicianId);
+      if (technician) {
+        await Notification.create({
+          userId: technician._id,
+          title: 'لغو سفارش',
+          message: `سفارش ${order.orderNumber} توسط مشتری لغو شد`,
+          type: 'order_update',
+          relatedOrderId: order._id,
+        });
+
+        // Send SMS to technician
+        if (technician.phone) {
+          await smsService.sendOrderCancelled(technician.phone, order.orderNumber, 'technician');
+        }
+      }
     }
 
     res.status(200).json({
@@ -507,10 +543,20 @@ export const assignTechnician = async (req: AuthRequest, res: Response): Promise
 
     await order.save();
 
-    // Notify customer
+    // Notify customer via SMS
     const customer = order.userId as any;
     if (customer?.phone) {
       await smsService.sendTechnicianAssigned(customer.phone, order.orderNumber, technician.name);
+    }
+
+    // Send SMS to technician
+    if (technician.phone) {
+      await smsService.sendOrderAssignedToTechnician(
+        technician.phone,
+        order.orderNumber,
+        customer?.name || 'مشتری',
+        order.issues
+      );
     }
 
     // Notify technician

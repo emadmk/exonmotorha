@@ -13,13 +13,15 @@ import {
   MapPin,
   Calendar,
   AlertCircle,
+  Camera,
+  X,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/Button';
 import { BottomNav } from '../components/layout/BottomNav';
-import { orderAPI } from '../services/api';
-import { Order, OrderStatus } from '../types';
+import { orderAPI, messageAPI } from '../services/api';
+import { Order, OrderStatus, PHOTO_TYPE_LABELS, PhotoType } from '../types';
 import { cn, formatCurrency, formatDateSmart, toPersianDigits } from '../utils/helpers';
 
 const statusSteps: { key: OrderStatus; label: string; icon: typeof Clock }[] = [
@@ -36,6 +38,8 @@ export function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -66,6 +70,25 @@ export function OrderDetailPage() {
       console.error('Error cancelling order:', error);
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!order || isStartingChat) return;
+
+    setIsStartingChat(true);
+    try {
+      const response = await messageAPI.startOrderChat(order._id);
+      // Navigate to messages page - the conversation will be shown
+      navigate('/messages', { state: { conversationId: response.data.conversation._id } });
+    } catch (error: any) {
+      console.error('Error starting chat:', error);
+      // If technician not assigned, show message
+      if (error.response?.status === 400) {
+        alert('هنوز تکنسینی به این سفارش اختصاص نیافته');
+      }
+    } finally {
+      setIsStartingChat(false);
     }
   };
 
@@ -291,13 +314,43 @@ export function OrderDetailPage() {
                 >
                   <Phone className="w-5 h-5" />
                 </a>
-                <Link
-                  to="/messages"
-                  className="w-10 h-10 bg-dark-800 rounded-xl flex items-center justify-center text-dark-400 hover:text-gold-400 transition-colors"
+                <button
+                  onClick={handleStartChat}
+                  disabled={isStartingChat}
+                  className="w-10 h-10 bg-dark-800 rounded-xl flex items-center justify-center text-dark-400 hover:text-gold-400 transition-colors disabled:opacity-50"
                 >
-                  <MessageSquare className="w-5 h-5" />
-                </Link>
+                  {isStartingChat ? (
+                    <div className="w-4 h-4 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <MessageSquare className="w-5 h-5" />
+                  )}
+                </button>
               </div>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Photos from Technician */}
+        {order.photos && order.photos.length > 0 && (
+          <GlassCard padding="md">
+            <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
+              <Camera className="w-5 h-5 text-gold-500" />
+              تصاویر
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              {order.photos.map((photo) => (
+                <div key={photo._id} className="relative aspect-square">
+                  <img
+                    src={photo.url}
+                    alt={PHOTO_TYPE_LABELS[photo.type as PhotoType] || 'تصویر'}
+                    className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setViewingPhoto(photo.url)}
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 rounded-b-lg">
+                    <span className="text-xs text-white">{PHOTO_TYPE_LABELS[photo.type as PhotoType] || 'سایر'}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </GlassCard>
         )}
@@ -353,6 +406,27 @@ export function OrderDetailPage() {
       </main>
 
       <BottomNav />
+
+      {/* Photo Viewer Modal */}
+      {viewingPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <button
+            onClick={() => setViewingPhoto(null)}
+            className="absolute top-4 right-4 p-2 bg-dark-800/80 rounded-full text-white hover:bg-dark-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={viewingPhoto}
+            alt="تصویر"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

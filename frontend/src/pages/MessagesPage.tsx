@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   ArrowRight,
   Send,
@@ -56,6 +56,7 @@ interface Order {
 
 export function MessagesPage() {
   const { user } = useAuthStore();
+  const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -70,6 +71,19 @@ export function MessagesPage() {
     loadConversations();
     loadOrders();
   }, []);
+
+  // Handle incoming conversationId from navigation state
+  useEffect(() => {
+    const state = location.state as { conversationId?: string } | null;
+    if (state?.conversationId && conversations.length > 0) {
+      const conv = conversations.find(c => c._id === state.conversationId);
+      if (conv) {
+        setSelectedConversation(conv);
+        // Clear the state to prevent re-selecting on re-renders
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location.state, conversations]);
 
   const loadOrders = async () => {
     try {
