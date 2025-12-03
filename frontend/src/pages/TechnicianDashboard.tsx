@@ -360,18 +360,18 @@ export function TechnicianDashboard() {
 
   const getVehicleInfo = (order: Order) => {
     const vehicle = order.vehicleId as any;
-    if (typeof vehicle === 'object') {
-      return `${vehicle.brand} ${vehicle.model}`;
+    if (vehicle && typeof vehicle === 'object' && vehicle.brand) {
+      return `${vehicle.brand} ${vehicle.model || ''}`.trim();
     }
-    return '-';
+    return 'خودرو حذف شده';
   };
 
   const getCustomerInfo = (order: Order) => {
     const customer = order.userId as any;
-    if (typeof customer === 'object') {
-      return { name: customer.name || 'مشتری', phone: customer.phone };
+    if (customer && typeof customer === 'object') {
+      return { name: customer.name || 'مشتری', phone: customer.phone || '-' };
     }
-    return { name: '-', phone: '-' };
+    return { name: 'کاربر حذف شده', phone: '-' };
   };
 
   const stats = {

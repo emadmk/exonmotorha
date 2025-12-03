@@ -77,17 +77,17 @@ export function OrderDetailPage() {
   const getVehicleInfo = () => {
     if (!order) return null;
     const vehicle = order.vehicleId as any;
-    if (typeof vehicle === 'object') {
+    if (vehicle && typeof vehicle === 'object' && vehicle.brand) {
       return vehicle;
     }
-    return null;
+    return { brand: 'خودرو', model: '', year: '', plateNumber: '' };
   };
 
   const getTechnicianInfo = () => {
     if (!order) return null;
     const technician = order.technicianId as any;
-    if (typeof technician === 'object') {
-      return technician;
+    if (technician && typeof technician === 'object') {
+      return { ...technician, name: technician.name || 'تکنسین' };
     }
     return null;
   };

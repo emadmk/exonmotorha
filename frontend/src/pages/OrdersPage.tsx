@@ -50,10 +50,10 @@ export function OrdersPage() {
 
   const getVehicleInfo = (order: Order) => {
     const vehicle = order.vehicleId as any;
-    if (typeof vehicle === 'object') {
-      return `${vehicle.brand} ${vehicle.model}`;
+    if (vehicle && typeof vehicle === 'object' && vehicle.brand) {
+      return `${vehicle.brand} ${vehicle.model || ''}`.trim();
     }
-    return '-';
+    return 'خودرو';
   };
 
   return (

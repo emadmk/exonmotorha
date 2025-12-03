@@ -130,26 +130,26 @@ export function AdminOrderDetailPage() {
   const getVehicleInfo = () => {
     if (!order) return null;
     const vehicle = order.vehicleId as any;
-    if (typeof vehicle === 'object') {
+    if (vehicle && typeof vehicle === 'object' && vehicle.brand) {
       return vehicle;
     }
-    return null;
+    return { brand: 'خودرو حذف شده', model: '', year: '', plateNumber: '' };
   };
 
   const getCustomerInfo = () => {
     if (!order) return null;
     const customer = order.userId as any;
-    if (typeof customer === 'object') {
-      return customer;
+    if (customer && typeof customer === 'object') {
+      return { ...customer, name: customer.name || 'کاربر حذف شده', phone: customer.phone || '-' };
     }
-    return null;
+    return { name: 'کاربر حذف شده', phone: '-' };
   };
 
   const getTechnicianInfo = () => {
     if (!order) return null;
     const technician = order.technicianId as any;
-    if (typeof technician === 'object') {
-      return technician;
+    if (technician && typeof technician === 'object') {
+      return { ...technician, name: technician.name || 'تکنسین' };
     }
     return null;
   };

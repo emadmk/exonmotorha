@@ -56,16 +56,16 @@ export function Dashboard() {
 
   const getVehicleInfo = (order: Order) => {
     const vehicle = order.vehicleId as any;
-    if (typeof vehicle === 'object') {
-      return `${vehicle.brand} ${vehicle.model} ${toPersianDigits(vehicle.year)}`;
+    if (vehicle && typeof vehicle === 'object' && vehicle.brand) {
+      return `${vehicle.brand} ${vehicle.model || ''} ${vehicle.year ? toPersianDigits(vehicle.year) : ''}`.trim();
     }
-    return '';
+    return 'خودرو';
   };
 
   const getTechnicianInfo = (order: Order) => {
     const tech = order.technicianId as any;
-    if (typeof tech === 'object') {
-      return tech.name;
+    if (tech && typeof tech === 'object') {
+      return tech.name || 'تکنسین';
     }
     return null;
   };
