@@ -14,9 +14,7 @@ export interface IVehicle {
   updatedAt: Date;
 }
 
-export interface IVehicleDocument extends IVehicle, mongoose.Document {}
-
-const vehicleSchema = new Schema<IVehicleDocument>(
+const vehicleSchema = new Schema(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -61,4 +59,4 @@ const vehicleSchema = new Schema<IVehicleDocument>(
 
 vehicleSchema.index({ userId: 1, isDefault: 1 });
 
-export const Vehicle = mongoose.model<IVehicleDocument>('Vehicle', vehicleSchema);
+export const Vehicle = mongoose.model('Vehicle', vehicleSchema);
