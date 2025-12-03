@@ -113,6 +113,12 @@ export const orderAPI = {
   // Technician
   getAssigned: (params?: any) => api.get('/orders/technician/assigned', { params }),
   technicianUpdate: (id: string, data: any) => api.put(`/orders/technician/${id}`, data),
+  uploadPhoto: (orderId: string, formData: FormData) =>
+    api.post(`/orders/technician/${orderId}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  deletePhoto: (orderId: string, photoId: string) =>
+    api.delete(`/orders/technician/${orderId}/photo/${photoId}`),
   // Admin
   getAll: (params?: any) => api.get('/orders/admin/all', { params }),
   updateStatus: (id: string, status: string, adminNotes?: string) =>

@@ -5,7 +5,7 @@ import { config } from '../config';
 import fs from 'fs';
 
 // Ensure upload directories exist
-const uploadDirs = ['vehicles', 'avatars', 'documents', 'chat'];
+const uploadDirs = ['vehicles', 'avatars', 'documents', 'chat', 'orders'];
 uploadDirs.forEach(dir => {
   const fullPath = path.join(config.upload.path, dir);
   if (!fs.existsSync(fullPath)) {
@@ -24,6 +24,8 @@ const storage = multer.diskStorage({
       folder = 'avatars';
     } else if (req.baseUrl.includes('messages') || req.baseUrl.includes('conversations')) {
       folder = 'chat';
+    } else if (req.baseUrl.includes('orders') && req.path.includes('photo')) {
+      folder = 'orders';
     }
 
     cb(null, path.join(config.upload.path, folder));

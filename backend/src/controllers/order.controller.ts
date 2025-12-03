@@ -723,7 +723,7 @@ export const technicianUpdateOrder = async (req: AuthRequest, res: Response): Pr
   try {
     const { orderId } = req.params;
     const technicianId = req.userId;
-    const { notes, stepId, stepStatus } = req.body;
+    const { notes, stepId, stepStatus, status, estimatedCostMin, estimatedCostMax } = req.body;
 
     const order = await Order.findOne({ _id: orderId, technicianId });
 
@@ -735,7 +735,24 @@ export const technicianUpdateOrder = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    if (notes) order.notes = notes;
+    if (notes !== undefined) order.notes = notes;
+
+    // Update status if provided
+    if (status && ['in_progress', 'waiting_for_parts', 'completed'].includes(status)) {
+      order.status = status;
+      if (status === 'completed') {
+        order.completedAt = new Date();
+        order.progressPercentage = 100;
+      }
+    }
+
+    // Update cost estimate if provided
+    if (estimatedCostMin !== undefined) {
+      order.estimatedCostMin = Number(estimatedCostMin);
+    }
+    if (estimatedCostMax !== undefined) {
+      order.estimatedCostMax = Number(estimatedCostMax);
+    }
 
     // Update timeline step if provided
     if (stepId && stepStatus) {
@@ -764,6 +781,102 @@ export const technicianUpdateOrder = async (req: AuthRequest, res: Response): Pr
     res.status(500).json({
       success: false,
       message: 'خطا در به‌روزرسانی سفارش',
+    });
+  }
+};
+
+/**
+ * Upload photo to order by technician
+ */
+export const uploadOrderPhoto = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+    const technicianId = req.userId;
+    const { type = 'other', caption } = req.body;
+
+    const order = await Order.findOne({ _id: orderId, technicianId });
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        message: 'سفارش یافت نشد',
+      });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: 'فایل تصویر یافت نشد',
+      });
+      return;
+    }
+
+    const photoUrl = `/uploads/orders/${req.file.filename}`;
+
+    order.photos.push({
+      url: photoUrl,
+      type,
+      caption,
+      uploadedAt: new Date(),
+      uploadedBy: new mongoose.Types.ObjectId(technicianId),
+    });
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'تصویر با موفقیت آپلود شد',
+      photo: order.photos[order.photos.length - 1],
+    });
+  } catch (error) {
+    console.error('Upload order photo error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در آپلود تصویر',
+    });
+  }
+};
+
+/**
+ * Delete photo from order by technician
+ */
+export const deleteOrderPhoto = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { orderId, photoId } = req.params;
+    const technicianId = req.userId;
+
+    const order = await Order.findOne({ _id: orderId, technicianId });
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        message: 'سفارش یافت نشد',
+      });
+      return;
+    }
+
+    const photoIndex = order.photos.findIndex(p => p._id?.toString() === photoId);
+    if (photoIndex === -1) {
+      res.status(404).json({
+        success: false,
+        message: 'تصویر یافت نشد',
+      });
+      return;
+    }
+
+    order.photos.splice(photoIndex, 1);
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'تصویر با موفقیت حذف شد',
+    });
+  } catch (error) {
+    console.error('Delete order photo error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در حذف تصویر',
     });
   }
 };

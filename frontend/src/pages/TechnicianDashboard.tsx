@@ -25,14 +25,19 @@ import {
   Pause,
   Package,
   Send,
+  Image,
+  Trash2,
+  Plus,
+  X,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { StatusChip } from '../components/ui/StatusChip';
+import { CameraCapture } from '../components/ui/CameraCapture';
 import { useAuthStore } from '../stores/authStore';
 import { orderAPI, userAPI } from '../services/api';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus, PhotoType, PHOTO_TYPE_LABELS } from '../types';
 import { cn, formatNumber, formatDateSmart, toPersianDigits } from '../utils/helpers';
 
 type Tab = 'dashboard' | 'orders' | 'settings';
@@ -74,6 +79,14 @@ export function TechnicianDashboard() {
     notes: '',
   });
   const [technicianNotes, setTechnicianNotes] = useState('');
+
+  // Photo capture state
+  const [showCamera, setShowCamera] = useState(false);
+  const [showPhotoTypeSelect, setShowPhotoTypeSelect] = useState(false);
+  const [selectedPhotoType, setSelectedPhotoType] = useState<PhotoType>('vehicle');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -223,6 +236,48 @@ export function TechnicianDashboard() {
       console.error('Error saving notes:', error);
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  // Photo capture functions
+  const handleOpenCamera = (type: PhotoType) => {
+    setSelectedPhotoType(type);
+    setShowPhotoTypeSelect(false);
+    setShowCamera(true);
+  };
+
+  const handlePhotoCapture = async (file: File) => {
+    if (!selectedOrder) return;
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+      formData.append('type', selectedPhotoType);
+
+      await orderAPI.uploadPhoto(selectedOrder._id, formData);
+      // Reload order to get updated photos
+      const response = await orderAPI.getOne(selectedOrder._id);
+      setSelectedOrder(response.data.order);
+      setShowCamera(false);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!selectedOrder) return;
+    setDeletingPhotoId(photoId);
+    try {
+      await orderAPI.deletePhoto(selectedOrder._id, photoId);
+      // Reload order to get updated photos
+      const response = await orderAPI.getOne(selectedOrder._id);
+      setSelectedOrder(response.data.order);
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+    } finally {
+      setDeletingPhotoId(null);
     }
   };
 
@@ -816,6 +871,65 @@ export function TechnicianDashboard() {
                   ))}
                 </div>
               </GlassCard>
+
+              {/* Photos Section */}
+              <GlassCard padding="lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-white flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-blue-400" />
+                    عکس‌ها و مدارک
+                  </h3>
+                  <button
+                    onClick={() => setShowPhotoTypeSelect(true)}
+                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    افزودن عکس
+                  </button>
+                </div>
+
+                {/* Photo Grid */}
+                {selectedOrder.photos && selectedOrder.photos.length > 0 ? (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {selectedOrder.photos.map((photo) => (
+                      <div key={photo._id} className="relative group aspect-square">
+                        <img
+                          src={photo.url}
+                          alt={PHOTO_TYPE_LABELS[photo.type]}
+                          className="w-full h-full object-cover rounded-lg cursor-pointer"
+                          onClick={() => setViewingPhoto(photo.url)}
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1 rounded-b-lg">
+                          <span className="text-xs text-white">{PHOTO_TYPE_LABELS[photo.type]}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeletePhoto(photo._id)}
+                          disabled={deletingPhotoId === photo._id}
+                          className="absolute top-1 left-1 p-1 bg-red-600/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          {deletingPhotoId === photo._id ? (
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4 text-white" />
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Image className="w-12 h-12 mx-auto mb-3 text-dark-600" />
+                    <p className="text-dark-400 text-sm">هنوز عکسی اضافه نشده است</p>
+                    <button
+                      onClick={() => setShowPhotoTypeSelect(true)}
+                      className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors"
+                    >
+                      <Camera className="w-4 h-4 inline ml-1" />
+                      گرفتن عکس
+                    </button>
+                  </div>
+                )}
+              </GlassCard>
             </div>
           )}
 
@@ -952,6 +1066,66 @@ export function TechnicianDashboard() {
           )}
         </div>
       </main>
+
+      {/* Photo Type Selection Modal */}
+      {showPhotoTypeSelect && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70">
+          <div className="bg-dark-900 rounded-2xl w-full max-w-sm overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-dark-700">
+              <h3 className="font-semibold text-white">انتخاب نوع عکس</h3>
+              <button onClick={() => setShowPhotoTypeSelect(false)} className="p-1 text-dark-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-3">
+              {(Object.keys(PHOTO_TYPE_LABELS) as PhotoType[]).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => handleOpenCamera(type)}
+                  className="flex flex-col items-center gap-2 p-4 bg-dark-800 rounded-xl hover:bg-dark-700 transition-colors"
+                >
+                  {type === 'vehicle' && <Car className="w-8 h-8 text-blue-400" />}
+                  {type === 'license_plate' && <FileText className="w-8 h-8 text-amber-400" />}
+                  {type === 'vin' && <FileText className="w-8 h-8 text-purple-400" />}
+                  {type === 'invoice' && <FileText className="w-8 h-8 text-emerald-400" />}
+                  {type === 'document' && <FileText className="w-8 h-8 text-pink-400" />}
+                  {type === 'other' && <Image className="w-8 h-8 text-dark-400" />}
+                  <span className="text-sm text-white">{PHOTO_TYPE_LABELS[type]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Capture Modal */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={handlePhotoCapture}
+          onCancel={() => setShowCamera(false)}
+          isUploading={isUploadingPhoto}
+        />
+      )}
+
+      {/* Photo Viewer Modal */}
+      {viewingPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 text-white bg-dark-800/50 rounded-full"
+            onClick={() => setViewingPhoto(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={viewingPhoto}
+            alt="Full view"
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      )}
     </div>
   );
 }

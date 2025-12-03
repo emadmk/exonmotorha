@@ -30,6 +30,25 @@ export interface Vehicle {
 // Order types
 export type OrderStatus = 'pending' | 'planned' | 'in_progress' | 'waiting_for_parts' | 'completed' | 'cancelled';
 export type OrderPriority = 'normal' | 'high' | 'urgent';
+export type PhotoType = 'vehicle' | 'license_plate' | 'vin' | 'invoice' | 'document' | 'other';
+
+export interface OrderPhoto {
+  _id: string;
+  url: string;
+  type: PhotoType;
+  caption?: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
+export const PHOTO_TYPE_LABELS: Record<PhotoType, string> = {
+  vehicle: 'خودرو',
+  license_plate: 'پلاک',
+  vin: 'شماره شاسی',
+  invoice: 'فاکتور',
+  document: 'مدرک',
+  other: 'سایر',
+};
 
 export interface TimelineStep {
   _id: string;
@@ -62,6 +81,7 @@ export interface Order {
   scheduledDate?: string;
   scheduledTime?: string;
   timeline: TimelineStep[];
+  photos?: OrderPhoto[];
   estimatedCostMin?: number;
   estimatedCostMax?: number;
   finalCost?: number;

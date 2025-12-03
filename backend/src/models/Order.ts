@@ -20,6 +20,17 @@ export interface ILocation {
   };
 }
 
+export type PhotoType = 'vehicle' | 'license_plate' | 'vin' | 'invoice' | 'document' | 'other';
+
+export interface IOrderPhoto {
+  _id?: mongoose.Types.ObjectId;
+  url: string;
+  type: PhotoType;
+  caption?: string;
+  uploadedAt: Date;
+  uploadedBy: mongoose.Types.ObjectId;
+}
+
 export interface IOrder extends Document {
   _id: mongoose.Types.ObjectId;
   orderNumber: string;
@@ -40,6 +51,7 @@ export interface IOrder extends Document {
   progressPercentage: number;
   notes?: string;
   adminNotes?: string;
+  photos: IOrderPhoto[];
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +68,25 @@ const timelineStepSchema = new Schema<ITimelineStep>(
     },
     completedAt: { type: Date },
     orderIndex: { type: Number, required: true },
+  },
+  { _id: true }
+);
+
+const orderPhotoSchema = new Schema<IOrderPhoto>(
+  {
+    url: { type: String, required: true },
+    type: {
+      type: String,
+      enum: ['vehicle', 'license_plate', 'vin', 'invoice', 'document', 'other'],
+      default: 'other',
+    },
+    caption: { type: String },
+    uploadedAt: { type: Date, default: Date.now },
+    uploadedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
   },
   { _id: true }
 );
@@ -133,6 +164,10 @@ const orderSchema = new Schema<IOrder>(
     },
     adminNotes: {
       type: String,
+    },
+    photos: {
+      type: [orderPhotoSchema],
+      default: [],
     },
     completedAt: {
       type: Date,

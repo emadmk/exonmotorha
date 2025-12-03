@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as orderController from '../controllers/order.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
+import { uploadImage } from '../middleware/upload.middleware';
 
 const router = Router();
 
@@ -29,6 +30,21 @@ router.get('/technician/assigned', authorize('technician', 'admin'), orderContro
 
 // PUT /api/orders/technician/:orderId - Update order (technician)
 router.put('/technician/:orderId', authorize('technician', 'admin'), orderController.technicianUpdateOrder);
+
+// POST /api/orders/technician/:orderId/photo - Upload photo (technician)
+router.post(
+  '/technician/:orderId/photo',
+  authorize('technician', 'admin'),
+  uploadImage.single('photo'),
+  orderController.uploadOrderPhoto
+);
+
+// DELETE /api/orders/technician/:orderId/photo/:photoId - Delete photo (technician)
+router.delete(
+  '/technician/:orderId/photo/:photoId',
+  authorize('technician', 'admin'),
+  orderController.deleteOrderPhoto
+);
 
 // Admin routes
 // GET /api/orders/admin/all - Get all orders
