@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -9,19 +8,17 @@ import {
   LogOut,
   Plus,
   Search,
-  Filter,
-  ChevronDown,
   Calendar,
   Clock,
   Package,
   CheckCircle,
-  XCircle,
   TrendingUp,
   Car,
   User,
   Phone,
-  MapPin,
   Eye,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -29,8 +26,24 @@ import { Input } from '../components/ui/Input';
 import { StatusChip } from '../components/ui/StatusChip';
 import { useAuthStore } from '../stores/authStore';
 import { adminAPI, orderAPI } from '../services/api';
-import { Order, DashboardStats, OrderStatus, ORDER_STATUS_LABELS } from '../types';
-import { cn, formatNumber, toPersianDigits, formatDateSmart, formatCurrency } from '../utils/helpers';
+import { Order, DashboardStats, OrderStatus } from '../types';
+import { cn, formatNumber, formatDateSmart, formatCurrency } from '../utils/helpers';
+
+interface Technician {
+  _id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  isActive: boolean;
+  technicianInfo?: {
+    specialties: string[];
+    rating: number;
+    totalJobs: number;
+    completedJobs: number;
+    isAvailable: boolean;
+  };
+  activeOrders: number;
+}
 
 type Tab = 'dashboard' | 'orders' | 'technicians' | 'settings';
 
@@ -418,22 +431,7 @@ export function AdminDashboard() {
 
           {/* Technicians Tab */}
           {activeTab === 'technicians' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-white">تکنسین‌ها</h1>
-                <Button size="sm">
-                  <Plus className="w-4 h-4 ml-2" />
-                  افزودن تکنسین
-                </Button>
-              </div>
-
-              <GlassCard padding="lg" className="text-center">
-                <Users className="w-16 h-16 mx-auto mb-4 text-dark-600" />
-                <p className="text-dark-400">
-                  مدیریت تکنسین‌ها از این بخش امکان‌پذیر است
-                </p>
-              </GlassCard>
-            </div>
+            <TechniciansSection />
           )}
 
           {/* Settings Tab */}
@@ -450,6 +448,202 @@ export function AdminDashboard() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+// Technicians Section Component
+function TechniciansSection() {
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [newTechnician, setNewTechnician] = useState({
+    phone: '',
+    name: '',
+    email: '',
+    specialties: '',
+  });
+
+  useEffect(() => {
+    loadTechnicians();
+  }, []);
+
+  const loadTechnicians = async () => {
+    setIsLoading(true);
+    try {
+      const response = await adminAPI.getTechnicians();
+      setTechnicians(response.data.technicians || []);
+    } catch (error) {
+      console.error('Error loading technicians:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateTechnician = async () => {
+    if (!newTechnician.phone || !newTechnician.name) {
+      setError('نام و شماره موبایل الزامی است');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      await adminAPI.createTechnician({
+        phone: newTechnician.phone,
+        name: newTechnician.name,
+        email: newTechnician.email || undefined,
+        specialties: newTechnician.specialties
+          ? newTechnician.specialties.split('،').map(s => s.trim())
+          : [],
+      });
+
+      setShowModal(false);
+      setNewTechnician({ phone: '', name: '', email: '', specialties: '' });
+      loadTechnicians();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'خطا در ایجاد تکنسین');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white">تکنسین‌ها</h1>
+        <Button size="sm" onClick={() => setShowModal(true)}>
+          <Plus className="w-4 h-4 ml-2" />
+          افزودن تکنسین
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <div className="spinner" />
+        </div>
+      ) : technicians.length === 0 ? (
+        <GlassCard padding="lg" className="text-center">
+          <Users className="w-16 h-16 mx-auto mb-4 text-dark-600" />
+          <p className="text-dark-400 mb-4">هنوز تکنسینی ثبت نشده</p>
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="w-4 h-4 ml-2" />
+            افزودن اولین تکنسین
+          </Button>
+        </GlassCard>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {technicians.map((tech) => (
+            <GlassCard key={tech._id} padding="md">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-semibold text-white truncate">{tech.name}</p>
+                    {tech.technicianInfo?.isAvailable ? (
+                      <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">
+                        فعال
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">
+                        غیرفعال
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-dark-400 mb-2" dir="ltr">{tech.phone}</p>
+
+                  <div className="flex items-center gap-4 text-xs text-dark-400">
+                    <span>سفارش فعال: {tech.activeOrders}</span>
+                    {tech.technicianInfo && (
+                      <>
+                        <span>امتیاز: {tech.technicianInfo.rating}</span>
+                        <span>تکمیل: {tech.technicianInfo.completedJobs}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {tech.technicianInfo?.specialties && tech.technicianInfo.specialties.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {tech.technicianInfo.specialties.slice(0, 3).map((s, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-dark-800 text-dark-300 text-xs rounded">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      {/* Add Technician Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-dark-900 rounded-2xl w-full max-w-md border border-dark-700">
+            <div className="flex items-center justify-between p-4 border-b border-dark-700">
+              <h3 className="text-lg font-semibold text-white">افزودن تکنسین جدید</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <Input
+                placeholder="شماره موبایل *"
+                value={newTechnician.phone}
+                onChange={(e) => setNewTechnician({ ...newTechnician, phone: e.target.value })}
+                dir="ltr"
+              />
+              <Input
+                placeholder="نام و نام خانوادگی *"
+                value={newTechnician.name}
+                onChange={(e) => setNewTechnician({ ...newTechnician, name: e.target.value })}
+              />
+              <Input
+                placeholder="ایمیل (اختیاری)"
+                type="email"
+                value={newTechnician.email}
+                onChange={(e) => setNewTechnician({ ...newTechnician, email: e.target.value })}
+                dir="ltr"
+              />
+              <Input
+                placeholder="تخصص‌ها (با ، جدا کنید)"
+                value={newTechnician.specialties}
+                onChange={(e) => setNewTechnician({ ...newTechnician, specialties: e.target.value })}
+              />
+
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+            </div>
+
+            <div className="flex gap-3 p-4 border-t border-dark-700">
+              <Button
+                variant="secondary"
+                onClick={() => setShowModal(false)}
+                fullWidth
+              >
+                انصراف
+              </Button>
+              <Button
+                onClick={handleCreateTechnician}
+                isLoading={isSubmitting}
+                fullWidth
+              >
+                افزودن
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

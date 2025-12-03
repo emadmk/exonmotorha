@@ -8,6 +8,7 @@ import { Auth } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { RequestForm } from './pages/RequestForm';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { TechnicianDashboard } from './pages/TechnicianDashboard';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -118,19 +119,6 @@ function SettingsPage() {
           >
             خروج از حساب کاربری
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TechnicianDashboard() {
-  return (
-    <div className="min-h-screen bg-dark-950 p-4 pb-20">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-6">داشبورد تکنسین</h1>
-        <div className="glass-card p-8 text-center">
-          <p className="text-dark-400">سفارش‌های اختصاص داده شده به شما در این صفحه نمایش داده می‌شود</p>
         </div>
       </div>
     </div>

@@ -1,0 +1,529 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  User,
+  Settings,
+  LogOut,
+  Car,
+  Phone,
+  MapPin,
+  Calendar,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  ChevronLeft,
+  MessageSquare,
+} from 'lucide-react';
+import { GlassCard } from '../components/ui/GlassCard';
+import { Button } from '../components/ui/Button';
+import { StatusChip } from '../components/ui/StatusChip';
+import { useAuthStore } from '../stores/authStore';
+import { orderAPI } from '../services/api';
+import { Order, OrderStatus } from '../types';
+import { cn, formatNumber, formatDateSmart, toPersianDigits } from '../utils/helpers';
+
+type Tab = 'dashboard' | 'orders' | 'settings';
+
+const statusFilters: { value: OrderStatus | 'all'; label: string }[] = [
+  { value: 'all', label: 'همه' },
+  { value: 'in_progress', label: 'در حال انجام' },
+  { value: 'waiting_for_parts', label: 'انتظار قطعه' },
+  { value: 'completed', label: 'تکمیل شده' },
+];
+
+export function TechnicianDashboard() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+
+  useEffect(() => {
+    loadOrders();
+  }, [statusFilter]);
+
+  const loadOrders = async () => {
+    setIsLoading(true);
+    try {
+      const params: any = {};
+      if (statusFilter !== 'all') params.status = statusFilter;
+
+      const response = await orderAPI.getAssigned(params);
+      setOrders(response.data.orders);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  const getVehicleInfo = (order: Order) => {
+    const vehicle = order.vehicleId as any;
+    if (typeof vehicle === 'object') {
+      return `${vehicle.brand} ${vehicle.model}`;
+    }
+    return '-';
+  };
+
+  const getCustomerInfo = (order: Order) => {
+    const customer = order.userId as any;
+    if (typeof customer === 'object') {
+      return { name: customer.name || 'مشتری', phone: customer.phone };
+    }
+    return { name: '-', phone: '-' };
+  };
+
+  const stats = {
+    total: orders.length,
+    inProgress: orders.filter(o => o.status === 'in_progress').length,
+    waitingParts: orders.filter(o => o.status === 'waiting_for_parts').length,
+    completed: orders.filter(o => o.status === 'completed').length,
+  };
+
+  const navItems = [
+    { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
+    { id: 'orders', label: 'سفارش‌ها', icon: ClipboardList },
+    { id: 'settings', label: 'تنظیمات', icon: Settings },
+  ];
+
+  return (
+    <div className="min-h-screen bg-dark-950 flex">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex flex-col w-64 bg-dark-900 border-l border-dark-700/50">
+        <div className="p-6 border-b border-dark-700/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-white">پنل تکنسین</p>
+              <p className="text-xs text-dark-400">اکسون موتور</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-2">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id as Tab)}
+              className={cn(
+                'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all',
+                activeTab === item.id
+                  ? 'bg-blue-600/20 text-blue-400'
+                  : 'text-dark-400 hover:bg-dark-800 hover:text-white'
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-dark-700/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-dark-800 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-dark-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-white truncate">{user?.name}</p>
+              <p className="text-xs text-dark-400">تکنسین</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-dark-800 text-dark-400 rounded-xl hover:bg-red-600/20 hover:text-red-400 transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>خروج</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-dark-900 border-b border-dark-700/50">
+        <div className="flex items-center justify-between px-4 h-16">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-white">پنل تکنسین</span>
+          </div>
+          <button onClick={handleLogout} className="p-2 text-dark-400">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex overflow-x-auto no-scrollbar border-t border-dark-800">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id as Tab)}
+              className={cn(
+                'flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm',
+                activeTab === item.id
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-dark-400'
+              )}
+            >
+              <item.icon className="w-4 h-4" />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        <div className="p-4 md:p-8 pt-32 md:pt-8">
+          {/* Dashboard Tab */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              <h1 className="text-2xl font-bold text-white">سلام {user?.name}</h1>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <GlassCard padding="md">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                      <ClipboardList className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{toPersianDigits(stats.total)}</p>
+                      <p className="text-sm text-dark-400">کل سفارش‌ها</p>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                <GlassCard padding="md">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-amber-600/20 rounded-xl flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{toPersianDigits(stats.inProgress)}</p>
+                      <p className="text-sm text-dark-400">در حال انجام</p>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                <GlassCard padding="md">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center">
+                      <AlertCircle className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{toPersianDigits(stats.waitingParts)}</p>
+                      <p className="text-sm text-dark-400">انتظار قطعه</p>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                <GlassCard padding="md">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-emerald-600/20 rounded-xl flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{toPersianDigits(stats.completed)}</p>
+                      <p className="text-sm text-dark-400">تکمیل شده</p>
+                    </div>
+                  </div>
+                </GlassCard>
+              </div>
+
+              {/* Active Orders */}
+              <div>
+                <h2 className="text-lg font-semibold text-white mb-4">سفارش‌های فعال</h2>
+                {isLoading ? (
+                  <div className="flex justify-center py-10">
+                    <div className="spinner" />
+                  </div>
+                ) : orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length === 0 ? (
+                  <GlassCard padding="lg" className="text-center">
+                    <ClipboardList className="w-16 h-16 mx-auto mb-4 text-dark-600" />
+                    <p className="text-dark-400">سفارش فعالی ندارید</p>
+                  </GlassCard>
+                ) : (
+                  <div className="space-y-3">
+                    {orders
+                      .filter(o => o.status !== 'completed' && o.status !== 'cancelled')
+                      .map((order) => (
+                        <GlassCard
+                          key={order._id}
+                          hoverable
+                          padding="md"
+                          onClick={() => setSelectedOrder(order)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-dark-800 rounded-xl flex items-center justify-center">
+                                <Car className="w-6 h-6 text-blue-400" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-semibold text-white">{order.orderNumber}</span>
+                                  <StatusChip status={order.status} size="sm" />
+                                </div>
+                                <p className="text-sm text-dark-400">
+                                  {getVehicleInfo(order)} • {getCustomerInfo(order).name}
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronLeft className="w-5 h-5 text-dark-500" />
+                          </div>
+                        </GlassCard>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Orders Tab */}
+          {activeTab === 'orders' && !selectedOrder && (
+            <div className="space-y-6">
+              <h1 className="text-2xl font-bold text-white">سفارش‌های من</h1>
+
+              {/* Filters */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                {statusFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setStatusFilter(filter.value)}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
+                      statusFilter === filter.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-dark-800 text-dark-400 hover:bg-dark-700'
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Orders List */}
+              {isLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="spinner" />
+                </div>
+              ) : orders.length === 0 ? (
+                <GlassCard padding="lg" className="text-center">
+                  <ClipboardList className="w-16 h-16 mx-auto mb-4 text-dark-600" />
+                  <p className="text-dark-400">سفارشی یافت نشد</p>
+                </GlassCard>
+              ) : (
+                <div className="space-y-3">
+                  {orders.map((order) => (
+                    <GlassCard
+                      key={order._id}
+                      hoverable
+                      padding="md"
+                      onClick={() => setSelectedOrder(order)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-dark-800 rounded-xl flex items-center justify-center">
+                            <Car className="w-6 h-6 text-blue-400" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-white">{order.orderNumber}</span>
+                              <StatusChip status={order.status} size="sm" />
+                            </div>
+                            <p className="text-sm text-dark-400">
+                              {getVehicleInfo(order)} • {order.issues.slice(0, 2).join('، ')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-4">
+                          <p className="text-sm text-dark-400">{formatDateSmart(order.createdAt)}</p>
+                          <ChevronLeft className="w-5 h-5 text-dark-500" />
+                        </div>
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Order Detail */}
+          {activeTab === 'orders' && selectedOrder && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="p-2 bg-dark-800 rounded-lg text-dark-400 hover:text-white"
+                >
+                  <ChevronLeft className="w-5 h-5 rotate-180" />
+                </button>
+                <h1 className="text-2xl font-bold text-white">جزئیات سفارش</h1>
+              </div>
+
+              {/* Order Info */}
+              <GlassCard padding="lg">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-lg font-bold text-white">{selectedOrder.orderNumber}</span>
+                  <StatusChip status={selectedOrder.status} />
+                </div>
+
+                <div className="space-y-4">
+                  {/* Customer */}
+                  <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
+                    <User className="w-5 h-5 text-dark-400" />
+                    <div className="flex-1">
+                      <p className="text-white">{getCustomerInfo(selectedOrder).name}</p>
+                      <p className="text-sm text-dark-400" dir="ltr">{getCustomerInfo(selectedOrder).phone}</p>
+                    </div>
+                    <a
+                      href={`tel:${getCustomerInfo(selectedOrder).phone}`}
+                      className="p-2 bg-emerald-600/20 rounded-lg text-emerald-400"
+                    >
+                      <Phone className="w-5 h-5" />
+                    </a>
+                  </div>
+
+                  {/* Vehicle */}
+                  <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
+                    <Car className="w-5 h-5 text-dark-400" />
+                    <div>
+                      <p className="text-white">{getVehicleInfo(selectedOrder)}</p>
+                      <p className="text-sm text-dark-400">خودرو</p>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
+                    <MapPin className="w-5 h-5 text-dark-400" />
+                    <div className="flex-1">
+                      <p className="text-white">{selectedOrder.location}</p>
+                      <p className="text-sm text-dark-400">آدرس</p>
+                    </div>
+                  </div>
+
+                  {/* Schedule */}
+                  <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
+                    <Calendar className="w-5 h-5 text-dark-400" />
+                    <div>
+                      <p className="text-white">
+                        {formatDateSmart(selectedOrder.scheduledDate)} - {selectedOrder.scheduledTime}
+                      </p>
+                      <p className="text-sm text-dark-400">زمان مراجعه</p>
+                    </div>
+                  </div>
+
+                  {/* Issues */}
+                  <div>
+                    <p className="text-dark-400 text-sm mb-2">مشکلات:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedOrder.issues.map((issue, i) => (
+                        <span key={i} className="px-3 py-1 bg-dark-800 rounded-full text-sm text-white">
+                          {issue}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {selectedOrder.description && (
+                    <div>
+                      <p className="text-dark-400 text-sm mb-2">توضیحات:</p>
+                      <p className="text-white">{selectedOrder.description}</p>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+
+              {/* Timeline */}
+              <GlassCard padding="lg">
+                <h3 className="font-semibold text-white mb-4">مراحل انجام کار</h3>
+                <div className="space-y-4">
+                  {selectedOrder.timeline.map((step, index) => (
+                    <div key={index} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center',
+                          step.status === 'completed' ? 'bg-emerald-600' :
+                          step.status === 'current' ? 'bg-blue-600' :
+                          'bg-dark-700'
+                        )}>
+                          {step.status === 'completed' ? (
+                            <CheckCircle className="w-4 h-4 text-white" />
+                          ) : (
+                            <span className="text-xs text-white">{toPersianDigits(index + 1)}</span>
+                          )}
+                        </div>
+                        {index < selectedOrder.timeline.length - 1 && (
+                          <div className={cn(
+                            'w-0.5 h-8 mt-1',
+                            step.status === 'completed' ? 'bg-emerald-600' : 'bg-dark-700'
+                          )} />
+                        )}
+                      </div>
+                      <div className="flex-1 pb-4">
+                        <p className={cn(
+                          'font-medium',
+                          step.status === 'completed' ? 'text-emerald-400' :
+                          step.status === 'current' ? 'text-blue-400' :
+                          'text-dark-400'
+                        )}>
+                          {step.title}
+                        </p>
+                        {step.description && (
+                          <p className="text-sm text-dark-400">{step.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <h1 className="text-2xl font-bold text-white">تنظیمات</h1>
+
+              <GlassCard padding="lg">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                    <span className="text-2xl text-white font-bold">
+                      {user?.name?.charAt(0) || '?'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xl font-semibold text-white">{user?.name}</p>
+                    <p className="text-dark-400" dir="ltr">{user?.phone}</p>
+                  </div>
+                </div>
+
+                <hr className="border-dark-700 my-6" />
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-3 text-center text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                >
+                  خروج از حساب کاربری
+                </button>
+              </GlassCard>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
