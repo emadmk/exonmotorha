@@ -7,12 +7,13 @@ import {
   User,
   Shield,
   Wrench,
-  ChevronLeft,
+  X,
+  Plus,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { BottomNav } from '../components/layout/BottomNav';
 import { useAuthStore } from '../stores/authStore';
-import { messageAPI } from '../services/api';
+import { messageAPI, orderAPI } from '../services/api';
 import { cn, formatDateSmart } from '../utils/helpers';
 
 interface Conversation {
@@ -43,6 +44,16 @@ interface Message {
   isRead: boolean;
 }
 
+interface Order {
+  _id: string;
+  orderNumber: string;
+  status: string;
+  technicianId?: {
+    _id: string;
+    name: string;
+  };
+}
+
 export function MessagesPage() {
   const { user } = useAuthStore();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -51,11 +62,23 @@ export function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadConversations();
+    loadOrders();
   }, []);
+
+  const loadOrders = async () => {
+    try {
+      const response = await orderAPI.getMyOrders({ status: 'in_progress,planned' });
+      setOrders(response.data.orders || []);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedConversation) {
@@ -115,8 +138,21 @@ export function MessagesPage() {
       const conversation = response.data.conversation;
       setConversations([conversation, ...conversations.filter(c => c._id !== conversation._id)]);
       setSelectedConversation(conversation);
+      setShowNewChatModal(false);
     } catch (error) {
       console.error('Error starting support chat:', error);
+    }
+  };
+
+  const startTechnicianChat = async (orderId: string) => {
+    try {
+      const response = await messageAPI.startOrderChat(orderId);
+      const conversation = response.data.conversation;
+      setConversations([conversation, ...conversations.filter(c => c._id !== conversation._id)]);
+      setSelectedConversation(conversation);
+      setShowNewChatModal(false);
+    } catch (error) {
+      console.error('Error starting technician chat:', error);
     }
   };
 
@@ -151,13 +187,13 @@ export function MessagesPage() {
         </header>
 
         <main className="max-w-lg mx-auto px-4 py-6">
-          {/* Start Support Chat Button */}
+          {/* New Chat Button */}
           <button
-            onClick={startSupportChat}
+            onClick={() => setShowNewChatModal(true)}
             className="w-full mb-4 p-4 bg-gradient-gold rounded-xl flex items-center justify-center gap-2 text-dark-950 font-medium"
           >
-            <Shield className="w-5 h-5" />
-            گفتگو با پشتیبانی
+            <Plus className="w-5 h-5" />
+            شروع گفتگو جدید
           </button>
 
           {isLoading ? (
@@ -213,6 +249,72 @@ export function MessagesPage() {
         </main>
 
         <BottomNav />
+
+        {/* New Chat Modal */}
+        {showNewChatModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-dark-900 rounded-2xl w-full max-w-md border border-dark-700 max-h-[80vh] overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-dark-700">
+                <h3 className="text-lg font-semibold text-white">شروع گفتگو</h3>
+                <button
+                  onClick={() => setShowNewChatModal(false)}
+                  className="p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-3">
+                {/* Support Chat */}
+                <button
+                  onClick={startSupportChat}
+                  className="w-full p-4 bg-dark-800 rounded-xl flex items-center gap-4 hover:bg-dark-700 transition-colors"
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-right flex-1">
+                    <p className="font-medium text-white">پشتیبانی</p>
+                    <p className="text-sm text-dark-400">گفتگو با تیم پشتیبانی</p>
+                  </div>
+                </button>
+
+                {/* Technician Chats */}
+                {orders.filter(o => o.technicianId).length > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 pt-2">
+                      <div className="h-px flex-1 bg-dark-700" />
+                      <span className="text-xs text-dark-500">تکنسین‌های سفارش‌ها</span>
+                      <div className="h-px flex-1 bg-dark-700" />
+                    </div>
+
+                    {orders.filter(o => o.technicianId).map((order) => (
+                      <button
+                        key={order._id}
+                        onClick={() => startTechnicianChat(order._id)}
+                        className="w-full p-4 bg-dark-800 rounded-xl flex items-center gap-4 hover:bg-dark-700 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                          <Wrench className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-right flex-1">
+                          <p className="font-medium text-white">{order.technicianId?.name}</p>
+                          <p className="text-sm text-dark-400">سفارش {order.orderNumber}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {orders.filter(o => o.technicianId).length === 0 && (
+                  <p className="text-center text-dark-500 text-sm py-4">
+                    هنوز تکنسینی به سفارش شما اختصاص داده نشده
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

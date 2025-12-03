@@ -135,18 +135,28 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Delete OTP
-    await OTP.deleteOne({ _id: otp._id });
-
-    // Find or create user
+    // Check if user exists
     let user = await User.findOne({ phone: formattedPhone });
     let isNewUser = false;
 
     if (!user) {
       isNewUser = true;
+
+      // If new user and no name provided, don't delete OTP yet - need it for registration
+      if (!name) {
+        res.status(200).json({
+          success: true,
+          message: 'لطفاً اطلاعات تکمیلی را وارد کنید',
+          isNewUser: true,
+          needsRegistration: true,
+        });
+        return;
+      }
+
+      // Create new user with provided name and nationalId
       user = await User.create({
         phone: formattedPhone,
-        name: name || `کاربر ${formattedPhone.slice(-4)}`,
+        name: name,
         nationalId: nationalId,
         role: 'customer',
       });
@@ -156,6 +166,9 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
         userId: user._id,
       });
     }
+
+    // Delete OTP after successful login/registration
+    await OTP.deleteOne({ _id: otp._id });
 
     // Update last login
     user.lastLogin = new Date();

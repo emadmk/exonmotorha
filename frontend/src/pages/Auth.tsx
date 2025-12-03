@@ -125,9 +125,10 @@ export function Auth() {
         name || undefined
       );
 
-      const { accessToken, refreshToken, user, isNewUser: newUser } = response.data;
+      const { accessToken, refreshToken, user, isNewUser: newUser, needsRegistration } = response.data;
 
-      if (newUser && !name) {
+      // If new user needs to complete registration
+      if (needsRegistration) {
         setIsNewUser(true);
         setStep('register');
         setIsLoading(false);

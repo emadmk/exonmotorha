@@ -19,13 +19,20 @@ import {
   Eye,
   X,
   Loader2,
+  MessageSquare,
+  Shield,
+  Wrench,
+  Ban,
+  Trash2,
+  Edit,
+  UserCog,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { StatusChip } from '../components/ui/StatusChip';
 import { useAuthStore } from '../stores/authStore';
-import { adminAPI, orderAPI } from '../services/api';
+import { adminAPI, orderAPI, userAPI, messageAPI } from '../services/api';
 import { Order, DashboardStats, OrderStatus } from '../types';
 import { cn, formatNumber, formatDateSmart, formatCurrency } from '../utils/helpers';
 
@@ -45,7 +52,7 @@ interface Technician {
   activeOrders: number;
 }
 
-type Tab = 'dashboard' | 'orders' | 'technicians' | 'settings';
+type Tab = 'dashboard' | 'orders' | 'users' | 'chats' | 'technicians' | 'settings';
 
 const statusFilters: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'همه' },
@@ -118,7 +125,9 @@ export function AdminDashboard() {
   const navItems = [
     { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { id: 'orders', label: 'سفارش‌ها', icon: ClipboardList },
-    { id: 'technicians', label: 'تکنسین‌ها', icon: Users },
+    { id: 'users', label: 'کاربران', icon: UserCog },
+    { id: 'chats', label: 'پیام‌ها', icon: MessageSquare },
+    { id: 'technicians', label: 'تکنسین‌ها', icon: Wrench },
     { id: 'settings', label: 'تنظیمات', icon: Settings },
   ];
 
@@ -429,6 +438,16 @@ export function AdminDashboard() {
             </div>
           )}
 
+          {/* Users Tab */}
+          {activeTab === 'users' && (
+            <UsersSection />
+          )}
+
+          {/* Chats Tab */}
+          {activeTab === 'chats' && (
+            <ChatsSection />
+          )}
+
           {/* Technicians Tab */}
           {activeTab === 'technicians' && (
             <TechniciansSection />
@@ -644,6 +663,446 @@ function TechniciansSection() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Users Section Component
+function UsersSection() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadUsers();
+  }, [roleFilter]);
+
+  const loadUsers = async () => {
+    setIsLoading(true);
+    try {
+      const params: any = {};
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (searchQuery) params.search = searchQuery;
+      const response = await userAPI.getAllUsers(params);
+      setUsers(response.data.users || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await userAPI.updateUserRole(userId, newRole);
+      loadUsers();
+    } catch (error) {
+      console.error('Error updating role:', error);
+    }
+  };
+
+  const handleBlockUser = async (userId: string, isBlocked: boolean) => {
+    try {
+      if (isBlocked) {
+        await userAPI.unblockUser(userId);
+      } else {
+        await userAPI.blockUser(userId);
+      }
+      loadUsers();
+    } catch (error) {
+      console.error('Error blocking/unblocking user:', error);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('آیا از حذف این کاربر مطمئن هستید؟')) return;
+    try {
+      await userAPI.deleteUser(userId);
+      loadUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+    setIsSubmitting(true);
+    try {
+      await userAPI.updateUser(editingUser._id, {
+        name: editingUser.name,
+        email: editingUser.email,
+        nationalId: editingUser.nationalId,
+      });
+      setEditingUser(null);
+      loadUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'admin': return 'مدیر';
+      case 'technician': return 'تکنسین';
+      default: return 'مشتری';
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-purple-600/20 text-purple-400';
+      case 'technician': return 'bg-blue-600/20 text-blue-400';
+      default: return 'bg-gray-600/20 text-gray-400';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-white">کاربران</h1>
+
+        <div className="flex gap-3">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
+            <input
+              type="text"
+              placeholder="جستجو..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && loadUsers()}
+              className="input pr-10 w-full sm:w-64"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Role Filters */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+        {[
+          { value: 'all', label: 'همه' },
+          { value: 'customer', label: 'مشتری' },
+          { value: 'technician', label: 'تکنسین' },
+          { value: 'admin', label: 'مدیر' },
+        ].map((filter) => (
+          <button
+            key={filter.value}
+            onClick={() => setRoleFilter(filter.value)}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
+              roleFilter === filter.value
+                ? 'bg-gold-600 text-dark-950'
+                : 'bg-dark-800 text-dark-400 hover:bg-dark-700'
+            )}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <div className="spinner" />
+        </div>
+      ) : users.length === 0 ? (
+        <GlassCard padding="lg" className="text-center">
+          <Users className="w-16 h-16 mx-auto mb-4 text-dark-600" />
+          <p className="text-dark-400">کاربری یافت نشد</p>
+        </GlassCard>
+      ) : (
+        <div className="space-y-3">
+          {users.map((u) => (
+            <GlassCard key={u._id} padding="md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-dark-800 rounded-full flex items-center justify-center">
+                    {u.avatar ? (
+                      <img src={u.avatar} alt={u.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <User className="w-6 h-6 text-dark-400" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-white">{u.name}</span>
+                      <span className={cn('px-2 py-0.5 text-xs rounded-full', getRoleColor(u.role))}>
+                        {getRoleLabel(u.role)}
+                      </span>
+                      {u.isBlocked && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-red-600/20 text-red-400">
+                          مسدود
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-dark-400" dir="ltr">{u.phone}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={u.role}
+                    onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                    className="input text-sm py-2"
+                  >
+                    <option value="customer">مشتری</option>
+                    <option value="technician">تکنسین</option>
+                    <option value="admin">مدیر</option>
+                  </select>
+
+                  <button
+                    onClick={() => setEditingUser(u)}
+                    className="p-2 bg-dark-800 rounded-lg text-dark-400 hover:text-white"
+                    title="ویرایش"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => handleBlockUser(u._id, u.isBlocked)}
+                    className={cn(
+                      'p-2 rounded-lg',
+                      u.isBlocked ? 'bg-emerald-600/20 text-emerald-400' : 'bg-amber-600/20 text-amber-400'
+                    )}
+                    title={u.isBlocked ? 'رفع انسداد' : 'مسدود کردن'}
+                  >
+                    <Ban className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteUser(u._id)}
+                    className="p-2 bg-red-600/20 rounded-lg text-red-400 hover:bg-red-600/30"
+                    title="حذف"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-dark-900 rounded-2xl w-full max-w-md border border-dark-700">
+            <div className="flex items-center justify-between p-4 border-b border-dark-700">
+              <h3 className="text-lg font-semibold text-white">ویرایش کاربر</h3>
+              <button
+                onClick={() => setEditingUser(null)}
+                className="p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <Input
+                placeholder="نام و نام خانوادگی"
+                value={editingUser.name}
+                onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+              />
+              <Input
+                placeholder="ایمیل"
+                type="email"
+                value={editingUser.email || ''}
+                onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                dir="ltr"
+              />
+              <Input
+                placeholder="کد ملی"
+                value={editingUser.nationalId || ''}
+                onChange={(e) => setEditingUser({ ...editingUser, nationalId: e.target.value })}
+                dir="ltr"
+              />
+            </div>
+
+            <div className="flex gap-3 p-4 border-t border-dark-700">
+              <Button variant="secondary" onClick={() => setEditingUser(null)} fullWidth>
+                انصراف
+              </Button>
+              <Button onClick={handleUpdateUser} isLoading={isSubmitting} fullWidth>
+                ذخیره
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Chats Section Component
+function ChatsSection() {
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  const loadConversations = async () => {
+    setIsLoading(true);
+    try {
+      const response = await messageAPI.getAllConversations();
+      setConversations(response.data.conversations || []);
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadMessages = async (conversationId: string) => {
+    try {
+      const response = await messageAPI.getMessages(conversationId);
+      setMessages(response.data.messages || []);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
+
+  const handleSelectConversation = async (conv: any) => {
+    setSelectedConversation(conv);
+    await loadMessages(conv._id);
+  };
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    if (!confirm('آیا از حذف این مکالمه مطمئن هستید؟')) return;
+    try {
+      await messageAPI.deleteConversation(conversationId);
+      setSelectedConversation(null);
+      loadConversations();
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedConversation) return;
+    try {
+      await messageAPI.deleteMessage(selectedConversation._id, messageId);
+      loadMessages(selectedConversation._id);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+    }
+  };
+
+  const getParticipantNames = (conv: any) => {
+    if (!conv.participants) return 'نامشخص';
+    return conv.participants.map((p: any) => p.name || p).join(' - ');
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-white">پیام‌ها</h1>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Conversations List */}
+        <div className="md:col-span-1 space-y-3">
+          {isLoading ? (
+            <div className="flex justify-center py-10">
+              <div className="spinner" />
+            </div>
+          ) : conversations.length === 0 ? (
+            <GlassCard padding="md" className="text-center">
+              <MessageSquare className="w-12 h-12 mx-auto mb-4 text-dark-600" />
+              <p className="text-dark-400 text-sm">مکالمه‌ای وجود ندارد</p>
+            </GlassCard>
+          ) : (
+            conversations.map((conv) => (
+              <GlassCard
+                key={conv._id}
+                hoverable
+                padding="sm"
+                onClick={() => handleSelectConversation(conv)}
+                className={cn(
+                  'cursor-pointer',
+                  selectedConversation?._id === conv._id && 'ring-2 ring-gold-600'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-dark-800 rounded-full flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-dark-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-white text-sm truncate">
+                      {getParticipantNames(conv)}
+                    </p>
+                    <p className="text-xs text-dark-500 truncate">
+                      {conv.lastMessage?.text || 'بدون پیام'}
+                    </p>
+                  </div>
+                </div>
+              </GlassCard>
+            ))
+          )}
+        </div>
+
+        {/* Messages View */}
+        <div className="md:col-span-2">
+          {selectedConversation ? (
+            <GlassCard padding="none" className="h-[500px] flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-dark-700">
+                <div>
+                  <p className="font-semibold text-white">
+                    {getParticipantNames(selectedConversation)}
+                  </p>
+                  <p className="text-xs text-dark-400">
+                    {selectedConversation.type || 'مکالمه'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDeleteConversation(selectedConversation._id)}
+                  className="p-2 bg-red-600/20 rounded-lg text-red-400 hover:bg-red-600/30"
+                  title="حذف مکالمه"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messages.map((msg) => (
+                  <div key={msg._id} className="group flex items-start gap-2">
+                    <div className="flex-1 bg-dark-800 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-gold-500">
+                          {typeof msg.senderId === 'object' ? msg.senderId?.name : 'کاربر'}
+                        </p>
+                        <button
+                          onClick={() => handleDeleteMessage(msg._id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:bg-red-600/20 rounded transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <p className="text-white text-sm">{msg.text}</p>
+                      <p className="text-xs text-dark-500 mt-1">
+                        {formatDateSmart(msg.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          ) : (
+            <GlassCard padding="lg" className="h-[500px] flex items-center justify-center">
+              <div className="text-center">
+                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-dark-600" />
+                <p className="text-dark-400">یک مکالمه را انتخاب کنید</p>
+              </div>
+            </GlassCard>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

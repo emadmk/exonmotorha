@@ -71,15 +71,22 @@ export const authAPI = {
 // User API
 export const userAPI = {
   getProfile: () => api.get('/users/profile'),
-  updateProfile: (data: { name?: string; email?: string }) => api.put('/users/profile', data),
+  updateProfile: (data: { name?: string; email?: string; nationalId?: string }) =>
+    api.put('/users/profile', data),
   uploadAvatar: (formData: FormData) =>
     api.post('/users/avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   getSettings: () => api.get('/users/settings'),
   updateSettings: (data: any) => api.put('/users/settings', data),
-  getAllUsers: (params?: any) => api.get('/users', { params }),
-  updateUserRole: (userId: string, role: string) => api.put(`/users/${userId}/role`, { role }),
+  // Admin endpoints
+  getAllUsers: (params?: any) => api.get('/users/admin/all', { params }),
+  getUser: (userId: string) => api.get(`/users/admin/${userId}`),
+  updateUser: (userId: string, data: any) => api.put(`/users/admin/${userId}`, data),
+  updateUserRole: (userId: string, role: string) => api.put(`/users/admin/${userId}/role`, { role }),
+  blockUser: (userId: string) => api.put(`/users/admin/${userId}/block`),
+  unblockUser: (userId: string) => api.put(`/users/admin/${userId}/unblock`),
+  deleteUser: (userId: string) => api.delete(`/users/admin/${userId}`),
 };
 
 // Vehicle API
@@ -124,11 +131,17 @@ export const messageAPI = {
     api.post('/messages/conversations', { participantId, orderId, type }),
   getSupport: () => api.get('/messages/support'),
   getOrderConversation: (orderId: string) => api.get(`/messages/order/${orderId}`),
+  startOrderChat: (orderId: string) => api.post(`/messages/order/${orderId}/start`),
   getMessages: (conversationId: string, params?: any) =>
     api.get(`/messages/${conversationId}`, { params }),
   sendMessage: (conversationId: string, text: string) =>
     api.post(`/messages/${conversationId}`, { text }),
   markAsRead: (conversationId: string) => api.put(`/messages/${conversationId}/read`),
+  // Admin endpoints
+  getAllConversations: (params?: any) => api.get('/messages/admin/conversations', { params }),
+  deleteConversation: (conversationId: string) => api.delete(`/messages/admin/${conversationId}`),
+  deleteMessage: (conversationId: string, messageId: string) =>
+    api.delete(`/messages/admin/${conversationId}/messages/${messageId}`),
 };
 
 // Receipt API
