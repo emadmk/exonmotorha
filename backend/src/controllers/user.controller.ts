@@ -295,3 +295,200 @@ export const updateUserRole = async (req: AuthRequest, res: Response): Promise<v
     });
   }
 };
+
+/**
+ * Get single user (Admin only)
+ */
+export const getUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select('-refreshToken');
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'کاربر یافت نشد',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در دریافت کاربر',
+    });
+  }
+};
+
+/**
+ * Update user (Admin only)
+ */
+export const updateUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    const { name, email, nationalId, phone } = req.body;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'کاربر یافت نشد',
+      });
+      return;
+    }
+
+    if (name) user.name = name;
+    if (email !== undefined) user.email = email;
+    if (nationalId !== undefined) user.nationalId = nationalId;
+    if (phone) user.phone = phone;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'کاربر با موفقیت به‌روزرسانی شد',
+      user: {
+        id: user._id,
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        nationalId: user.nationalId,
+        role: user.role,
+        isActive: user.isActive,
+      },
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در به‌روزرسانی کاربر',
+    });
+  }
+};
+
+/**
+ * Block user (Admin only)
+ */
+export const blockUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'کاربر یافت نشد',
+      });
+      return;
+    }
+
+    // Prevent blocking admin users
+    if (user.role === 'admin') {
+      res.status(403).json({
+        success: false,
+        message: 'امکان مسدود کردن ادمین وجود ندارد',
+      });
+      return;
+    }
+
+    user.isActive = false;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'کاربر با موفقیت مسدود شد',
+    });
+  } catch (error) {
+    console.error('Block user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در مسدود کردن کاربر',
+    });
+  }
+};
+
+/**
+ * Unblock user (Admin only)
+ */
+export const unblockUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'کاربر یافت نشد',
+      });
+      return;
+    }
+
+    user.isActive = true;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'کاربر با موفقیت فعال شد',
+    });
+  } catch (error) {
+    console.error('Unblock user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در فعال‌سازی کاربر',
+    });
+  }
+};
+
+/**
+ * Delete user (Admin only)
+ */
+export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'کاربر یافت نشد',
+      });
+      return;
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'admin') {
+      res.status(403).json({
+        success: false,
+        message: 'امکان حذف ادمین وجود ندارد',
+      });
+      return;
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    // Also delete related data
+    await Vehicle.deleteMany({ userId });
+    await UserSettings.deleteOne({ userId });
+
+    res.status(200).json({
+      success: true,
+      message: 'کاربر با موفقیت حذف شد',
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در حذف کاربر',
+    });
+  }
+};

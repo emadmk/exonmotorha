@@ -16,6 +16,8 @@ import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
 import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage';
+import { AddressesPage } from './pages/AddressesPage';
+import { CardsPage } from './pages/CardsPage';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -128,6 +130,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings/addresses"
+          element={
+            <ProtectedRoute>
+              <AddressesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings/cards"
+          element={
+            <ProtectedRoute>
+              <CardsPage />
             </ProtectedRoute>
           }
         />

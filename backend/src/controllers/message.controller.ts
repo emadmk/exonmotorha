@@ -393,3 +393,197 @@ export const getOrderConversation = async (req: AuthRequest, res: Response): Pro
     });
   }
 };
+
+/**
+ * Start order chat (creates conversation and returns it)
+ */
+export const startOrderChat = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId).populate('userId technicianId');
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        message: 'سفارش یافت نشد',
+      });
+      return;
+    }
+
+    // Must have technician assigned
+    if (!order.technicianId) {
+      res.status(400).json({
+        success: false,
+        message: 'هنوز تکنسینی به این سفارش اختصاص نیافته',
+      });
+      return;
+    }
+
+    // Find or create conversation with technician
+    let conversation = await Conversation.findOne({
+      orderId: order._id,
+      type: 'technician',
+      isActive: true,
+    });
+
+    if (!conversation) {
+      const technician = await User.findById(order.technicianId);
+      conversation = await Conversation.create({
+        orderId: order._id,
+        participants: [order.userId, order.technicianId],
+        type: 'technician',
+        title: `گفتگو با تکنسین ${technician?.name || ''} - سفارش ${order.orderNumber}`,
+      });
+    }
+
+    // Get other participant info
+    const otherParticipantId = conversation.participants.find(
+      (p) => p.toString() !== userId
+    );
+    let otherParticipant = null;
+    if (otherParticipantId) {
+      otherParticipant = await User.findById(otherParticipantId).select(
+        'name phone avatar role'
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      conversation: {
+        ...conversation.toObject(),
+        otherParticipant,
+      },
+    });
+  } catch (error) {
+    console.error('Start order chat error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در شروع گفتگو',
+    });
+  }
+};
+
+/**
+ * Get all conversations (Admin only)
+ */
+export const getAllConversations = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { page = 1, limit = 20, search, type } = req.query;
+
+    const query: any = {};
+    if (type) query.type = type;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [conversations, total] = await Promise.all([
+      Conversation.find(query)
+        .populate('participants', 'name phone avatar role')
+        .populate('orderId', 'orderNumber status')
+        .sort({ lastMessageAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      Conversation.countDocuments(query),
+    ]);
+
+    // Get message counts for each conversation
+    const conversationsWithCounts = await Promise.all(
+      conversations.map(async (conv) => {
+        const messageCount = await Message.countDocuments({ conversationId: conv._id });
+        return {
+          ...conv.toObject(),
+          messageCount,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      conversations: conversationsWithCounts,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error('Get all conversations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در دریافت مکالمات',
+    });
+  }
+};
+
+/**
+ * Delete conversation (Admin only)
+ */
+export const deleteConversation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { conversationId } = req.params;
+
+    const conversation = await Conversation.findById(conversationId);
+
+    if (!conversation) {
+      res.status(404).json({
+        success: false,
+        message: 'مکالمه یافت نشد',
+      });
+      return;
+    }
+
+    // Delete all messages in conversation
+    await Message.deleteMany({ conversationId });
+
+    // Delete conversation
+    await Conversation.findByIdAndDelete(conversationId);
+
+    res.status(200).json({
+      success: true,
+      message: 'مکالمه با موفقیت حذف شد',
+    });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در حذف مکالمه',
+    });
+  }
+};
+
+/**
+ * Delete message (Admin only)
+ */
+export const deleteMessage = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { conversationId, messageId } = req.params;
+
+    const message = await Message.findOne({
+      _id: messageId,
+      conversationId,
+    });
+
+    if (!message) {
+      res.status(404).json({
+        success: false,
+        message: 'پیام یافت نشد',
+      });
+      return;
+    }
+
+    await Message.findByIdAndDelete(messageId);
+
+    res.status(200).json({
+      success: true,
+      message: 'پیام با موفقیت حذف شد',
+    });
+  } catch (error) {
+    console.error('Delete message error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در حذف پیام',
+    });
+  }
+};

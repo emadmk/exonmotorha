@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -15,12 +15,17 @@ import {
   AlertCircle,
   ChevronLeft,
   MessageSquare,
+  Camera,
+  Mail,
+  Save,
+  Edit2,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { StatusChip } from '../components/ui/StatusChip';
 import { useAuthStore } from '../stores/authStore';
-import { orderAPI } from '../services/api';
+import { orderAPI, userAPI } from '../services/api';
 import { Order, OrderStatus } from '../types';
 import { cn, formatNumber, formatDateSmart, toPersianDigits } from '../utils/helpers';
 
@@ -35,13 +40,24 @@ const statusFilters: { value: OrderStatus | 'all'; label: string }[] = [
 
 export function TechnicianDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, fetchUser } = useAuthStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileFormData, setProfileFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+  });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -65,6 +81,59 @@ export function TechnicianDashboard() {
   const handleLogout = async () => {
     await logout();
     navigate('/');
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      // Update profile
+      await userAPI.updateProfile({
+        name: profileFormData.name,
+        email: profileFormData.email || undefined,
+      });
+
+      // Upload avatar if changed
+      if (avatarFile) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('avatar', avatarFile);
+        await userAPI.uploadAvatar(formDataUpload);
+      }
+
+      await fetchUser();
+      setIsEditingProfile(false);
+      setAvatarFile(null);
+      setAvatarPreview(null);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingProfile(false);
+    setProfileFormData({
+      name: user?.name || '',
+      email: user?.email || '',
+    });
+    setAvatarFile(null);
+    setAvatarPreview(null);
   };
 
   const getVehicleInfo = (order: Order) => {
@@ -500,27 +569,129 @@ export function TechnicianDashboard() {
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div className="space-y-6">
-              <h1 className="text-2xl font-bold text-white">تنظیمات</h1>
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-white">تنظیمات</h1>
+                {!isEditingProfile ? (
+                  <button
+                    onClick={() => setIsEditingProfile(true)}
+                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>ویرایش</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={isSavingProfile}
+                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300"
+                  >
+                    {isSavingProfile ? (
+                      <div className="spinner w-4 h-4" />
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>ذخیره</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
 
               <GlassCard padding="lg">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-2xl text-white font-bold">
-                      {user?.name?.charAt(0) || '?'}
-                    </span>
+                <div className="flex flex-col items-center mb-6">
+                  {/* Avatar */}
+                  <div className="relative mb-4">
+                    <div
+                      onClick={isEditingProfile ? handleAvatarClick : undefined}
+                      className={`w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center ${
+                        isEditingProfile ? 'cursor-pointer' : ''
+                      }`}
+                    >
+                      {avatarPreview || user?.avatar ? (
+                        <img
+                          src={avatarPreview || user?.avatar}
+                          alt={user?.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-3xl text-white font-bold">
+                          {user?.name?.charAt(0) || '?'}
+                        </span>
+                      )}
+                    </div>
+                    {isEditingProfile && (
+                      <div className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                        <Camera className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
                   </div>
-                  <div>
-                    <p className="text-xl font-semibold text-white">{user?.name}</p>
-                    <p className="text-dark-400" dir="ltr">{user?.phone}</p>
-                  </div>
+
+                  {/* Info */}
+                  {isEditingProfile ? (
+                    <div className="w-full space-y-4">
+                      <Input
+                        placeholder="نام و نام خانوادگی"
+                        value={profileFormData.name}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, name: e.target.value })}
+                        icon={<User className="w-5 h-5" />}
+                      />
+                      <Input
+                        placeholder="ایمیل (اختیاری)"
+                        type="email"
+                        value={profileFormData.email}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
+                        icon={<Mail className="w-5 h-5" />}
+                        dir="ltr"
+                      />
+                      <div className="flex items-center gap-3 p-3 bg-dark-800/50 rounded-xl">
+                        <Phone className="w-5 h-5 text-dark-400" />
+                        <span className="text-dark-400" dir="ltr">{user?.phone}</span>
+                        <span className="text-xs text-dark-500">(غیرقابل تغییر)</span>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          onClick={handleSaveProfile}
+                          isLoading={isSavingProfile}
+                          fullWidth
+                        >
+                          ذخیره تغییرات
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                        >
+                          انصراف
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-white mb-1">{user?.name}</h2>
+                      <p className="text-dark-400" dir="ltr">{user?.phone}</p>
+                      {user?.email && (
+                        <p className="text-dark-400 text-sm mt-1">{user.email}</p>
+                      )}
+                      <span className="inline-block mt-2 px-3 py-1 bg-blue-600/20 text-blue-400 text-sm rounded-full">
+                        تکنسین
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <hr className="border-dark-700 my-6" />
 
                 <button
                   onClick={handleLogout}
-                  className="w-full py-3 text-center text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  className="w-full py-3 text-center text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
+                  <LogOut className="w-5 h-5" />
                   خروج از حساب کاربری
                 </button>
               </GlassCard>

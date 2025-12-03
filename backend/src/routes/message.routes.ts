@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as messageController from '../controllers/message.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -18,6 +18,19 @@ router.get('/support', messageController.getSupportConversation);
 
 // GET /api/messages/order/:orderId - Get order conversation
 router.get('/order/:orderId', messageController.getOrderConversation);
+
+// POST /api/messages/order/:orderId/start - Start order chat
+router.post('/order/:orderId/start', messageController.startOrderChat);
+
+// Admin routes - must be before :conversationId routes
+// GET /api/messages/admin/conversations - Get all conversations (Admin only)
+router.get('/admin/conversations', authorize('admin'), messageController.getAllConversations);
+
+// DELETE /api/messages/admin/:conversationId - Delete conversation (Admin only)
+router.delete('/admin/:conversationId', authorize('admin'), messageController.deleteConversation);
+
+// DELETE /api/messages/admin/:conversationId/messages/:messageId - Delete message (Admin only)
+router.delete('/admin/:conversationId/messages/:messageId', authorize('admin'), messageController.deleteMessage);
 
 // GET /api/messages/:conversationId - Get messages in conversation
 router.get('/:conversationId', messageController.getMessages);
