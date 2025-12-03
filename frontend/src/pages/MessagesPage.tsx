@@ -158,7 +158,22 @@ export function MessagesPage() {
 
   const getOtherParticipant = (conv: Conversation) => {
     const userId = user?.id || user?._id;
-    return conv.participants.find(p => (typeof p === 'string' ? p : (p as any)._id) !== userId) || conv.participants[0];
+    if (!conv.participants || !Array.isArray(conv.participants)) {
+      return { _id: '', name: 'نامشخص', role: 'customer' };
+    }
+    const validParticipants = conv.participants.filter(p => p != null);
+    const other = validParticipants.find(p => {
+      const pId = typeof p === 'string' ? p : (p as any)?._id;
+      return pId !== userId;
+    });
+    if (!other || typeof other === 'string') {
+      return { _id: '', name: 'کاربر حذف شده', role: 'customer' };
+    }
+    return {
+      ...other,
+      name: other.name || 'کاربر حذف شده',
+      role: other.role || 'customer'
+    };
   };
 
   const getRoleIcon = (role: string) => {
