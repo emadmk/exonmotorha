@@ -1,0 +1,169 @@
+import mongoose, { Document, Schema } from 'mongoose';
+
+export type OrderStatus = 'planned' | 'in_progress' | 'waiting_for_parts' | 'completed' | 'cancelled';
+export type OrderPriority = 'normal' | 'high' | 'urgent';
+
+export interface ITimelineStep {
+  _id?: mongoose.Types.ObjectId;
+  title: string;
+  description: string;
+  status: 'completed' | 'current' | 'upcoming';
+  completedAt?: Date;
+  orderIndex: number;
+}
+
+export interface IOrder extends Document {
+  _id: mongoose.Types.ObjectId;
+  orderNumber: string;
+  userId: mongoose.Types.ObjectId;
+  vehicleId: mongoose.Types.ObjectId;
+  technicianId?: mongoose.Types.ObjectId;
+  status: OrderStatus;
+  priority: OrderPriority;
+  issues: string[];
+  description?: string;
+  location: string;
+  latitude?: number;
+  longitude?: number;
+  scheduledDate: Date;
+  scheduledTime: string;
+  timeline: ITimelineStep[];
+  estimatedCostMin?: number;
+  estimatedCostMax?: number;
+  finalCost?: number;
+  progressPercentage: number;
+  notes?: string;
+  adminNotes?: string;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const timelineStepSchema = new Schema<ITimelineStep>(
+  {
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    status: {
+      type: String,
+      enum: ['completed', 'current', 'upcoming'],
+      default: 'upcoming',
+    },
+    completedAt: { type: Date },
+    orderIndex: { type: Number, required: true },
+  },
+  { _id: true }
+);
+
+const orderSchema = new Schema<IOrder>(
+  {
+    orderNumber: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+    vehicleId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Vehicle',
+      required: true,
+    },
+    technicianId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ['planned', 'in_progress', 'waiting_for_parts', 'completed', 'cancelled'],
+      default: 'planned',
+      index: true,
+    },
+    priority: {
+      type: String,
+      enum: ['normal', 'high', 'urgent'],
+      default: 'normal',
+    },
+    issues: [{
+      type: String,
+      required: true,
+    }],
+    description: {
+      type: String,
+    },
+    location: {
+      type: String,
+      required: true,
+    },
+    latitude: {
+      type: Number,
+    },
+    longitude: {
+      type: Number,
+    },
+    scheduledDate: {
+      type: Date,
+      required: true,
+    },
+    scheduledTime: {
+      type: String,
+      required: true,
+    },
+    timeline: [timelineStepSchema],
+    estimatedCostMin: {
+      type: Number,
+    },
+    estimatedCostMax: {
+      type: Number,
+    },
+    finalCost: {
+      type: Number,
+    },
+    progressPercentage: {
+      type: Number,
+      default: 0,
+    },
+    notes: {
+      type: String,
+    },
+    adminNotes: {
+      type: String,
+    },
+    completedAt: {
+      type: Date,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+orderSchema.index({ orderNumber: 1 });
+orderSchema.index({ userId: 1, status: 1 });
+orderSchema.index({ technicianId: 1, status: 1 });
+orderSchema.index({ createdAt: -1 });
+
+// Generate order number before saving
+orderSchema.pre('save', async function (next) {
+  if (!this.orderNumber) {
+    const count = await mongoose.model('Order').countDocuments();
+    this.orderNumber = `CR-${String(count + 1001).padStart(4, '0')}`;
+  }
+  next();
+});
+
+// Default timeline steps
+export const defaultTimelineSteps: Omit<ITimelineStep, '_id'>[] = [
+  { title: 'ثبت درخواست', description: 'درخواست شما با موفقیت ثبت شد', status: 'completed', orderIndex: 1 },
+  { title: 'تایید و بررسی', description: 'درخواست در حال بررسی توسط تیم پشتیبانی', status: 'upcoming', orderIndex: 2 },
+  { title: 'اختصاص تکنسین', description: 'تکنسین به سفارش شما اختصاص داده شد', status: 'upcoming', orderIndex: 3 },
+  { title: 'تشخیص و برآورد', description: 'بررسی کامل خودرو و اعلام هزینه', status: 'upcoming', orderIndex: 4 },
+  { title: 'انجام تعمیرات', description: 'در حال انجام تعمیرات', status: 'upcoming', orderIndex: 5 },
+  { title: 'تکمیل و تحویل', description: 'خودرو آماده تحویل است', status: 'upcoming', orderIndex: 6 },
+];
+
+export const Order = mongoose.model<IOrder>('Order', orderSchema);
