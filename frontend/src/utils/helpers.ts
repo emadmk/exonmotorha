@@ -106,24 +106,37 @@ export const formatRelativeTime = (date: string | Date): string => {
 /**
  * Check if date is today
  */
-export const isToday = (date: string | Date): boolean => {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const today = new Date();
-  return (
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear()
-  );
+export const isToday = (date: string | Date | null | undefined): boolean => {
+  if (!date) return false;
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) return false;
+    const today = new Date();
+    return (
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear()
+    );
+  } catch {
+    return false;
+  }
 };
 
 /**
  * Format date for display (shows "امروز" if today)
  */
-export const formatDateSmart = (date: string | Date): string => {
-  if (isToday(date)) {
-    return 'امروز، ' + formatTime(date);
+export const formatDateSmart = (date: string | Date | null | undefined): string => {
+  if (!date) return '';
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) return '';
+    if (isToday(date)) {
+      return 'امروز، ' + formatTime(date);
+    }
+    return formatDate(date);
+  } catch {
+    return '';
   }
-  return formatDate(date);
 };
 
 /**
