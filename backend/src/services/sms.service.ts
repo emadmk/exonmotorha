@@ -19,7 +19,7 @@ class SMSService {
   }
 
   /**
-   * Send OTP verification code
+   * Send OTP verification code using Kavenegar template
    */
   async sendOTP(phone: string, code: string): Promise<boolean> {
     if (!this.apiKey) {
@@ -28,14 +28,14 @@ class SMSService {
     }
 
     try {
-      const message = `کد تایید اکسون موتور: ${code}\nاین کد تا ۲ دقیقه معتبر است.`;
-
+      // Use Kavenegar verify/lookup with template "verify"
       const response = await axios.get<KavenegarResponse>(
-        `${KAVENEGAR_BASE_URL}/${this.apiKey}/sms/send.json`,
+        `${KAVENEGAR_BASE_URL}/${this.apiKey}/verify/lookup.json`,
         {
           params: {
             receptor: phone,
-            message: message,
+            token: code,
+            template: 'verify',
           },
         }
       );
