@@ -26,6 +26,7 @@ import {
   Trash2,
   Edit,
   UserCog,
+  Send,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -942,6 +943,8 @@ function ChatsSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     loadConversations();
@@ -994,9 +997,34 @@ function ChatsSection() {
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!selectedConversation || !newMessage.trim()) return;
+    setIsSending(true);
+    try {
+      await messageAPI.sendMessage(selectedConversation._id, newMessage.trim());
+      setNewMessage('');
+      loadMessages(selectedConversation._id);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const getParticipantNames = (conv: any) => {
-    if (!conv.participants) return 'نامشخص';
-    return conv.participants.map((p: any) => p.name || p).join(' - ');
+    if (!conv.participants || !Array.isArray(conv.participants)) return 'نامشخص';
+    return conv.participants
+      .filter((p: any) => p != null)
+      .map((p: any) => (typeof p === 'object' ? p.name : p) || 'کاربر حذف شده')
+      .join(' - ') || 'نامشخص';
+  };
+
+  const getSenderName = (msg: any) => {
+    if (!msg.senderId) return 'سیستم';
+    if (typeof msg.senderId === 'object') {
+      return msg.senderId?.name || 'کاربر حذف شده';
+    }
+    return 'کاربر';
   };
 
   return (
@@ -1056,7 +1084,8 @@ function ChatsSection() {
                     {getParticipantNames(selectedConversation)}
                   </p>
                   <p className="text-xs text-dark-400">
-                    {selectedConversation.type || 'مکالمه'}
+                    {selectedConversation.type === 'support' ? 'پشتیبانی' :
+                     selectedConversation.type === 'technician' ? 'تکنسین' : 'مکالمه'}
                   </p>
                 </div>
                 <button
@@ -1075,7 +1104,7 @@ function ChatsSection() {
                     <div className="flex-1 bg-dark-800 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-xs text-gold-500">
-                          {typeof msg.senderId === 'object' ? msg.senderId?.name : 'کاربر'}
+                          {getSenderName(msg)}
                         </p>
                         <button
                           onClick={() => handleDeleteMessage(msg._id)}
@@ -1091,6 +1120,27 @@ function ChatsSection() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Message Input */}
+              <div className="p-4 border-t border-dark-700">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                    placeholder="پیام خود را بنویسید..."
+                    className="flex-1 bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-dark-500 focus:border-gold-500 focus:outline-none"
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    isLoading={isSending}
+                    disabled={!newMessage.trim()}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </GlassCard>
           ) : (

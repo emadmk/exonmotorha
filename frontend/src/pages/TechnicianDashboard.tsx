@@ -36,11 +36,11 @@ import { Input } from '../components/ui/Input';
 import { StatusChip } from '../components/ui/StatusChip';
 import { CameraCapture } from '../components/ui/CameraCapture';
 import { useAuthStore } from '../stores/authStore';
-import { orderAPI, userAPI } from '../services/api';
+import { orderAPI, userAPI, messageAPI } from '../services/api';
 import { Order, OrderStatus, PhotoType, PHOTO_TYPE_LABELS } from '../types';
 import { cn, formatNumber, formatDateSmart, toPersianDigits } from '../utils/helpers';
 
-type Tab = 'dashboard' | 'orders' | 'settings';
+type Tab = 'dashboard' | 'orders' | 'chat' | 'settings';
 
 const statusFilters: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'همه' },
@@ -87,6 +87,14 @@ export function TechnicianDashboard() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+
+  // Chat state
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -288,6 +296,68 @@ export function TechnicianDashboard() {
     }
   }, [selectedOrder?._id]);
 
+  // Load conversations when chat tab is active
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      loadConversations();
+    }
+  }, [activeTab]);
+
+  // Chat functions
+  const loadConversations = async () => {
+    setIsLoadingChat(true);
+    try {
+      const response = await messageAPI.getConversations();
+      setConversations(response.data.conversations || []);
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    } finally {
+      setIsLoadingChat(false);
+    }
+  };
+
+  const loadMessages = async (conversationId: string) => {
+    try {
+      const response = await messageAPI.getMessages(conversationId);
+      setMessages(response.data.messages || []);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
+
+  const handleSelectConversation = async (conv: any) => {
+    setSelectedConversation(conv);
+    await loadMessages(conv._id);
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedConversation || !newMessage.trim()) return;
+    setIsSendingMessage(true);
+    try {
+      await messageAPI.sendMessage(selectedConversation._id, newMessage.trim());
+      setNewMessage('');
+      loadMessages(selectedConversation._id);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const getOtherParticipant = (conv: any) => {
+    if (!conv.participants || !Array.isArray(conv.participants)) return 'نامشخص';
+    const other = conv.participants.find((p: any) => p && p._id !== user?.id);
+    return other?.name || 'کاربر';
+  };
+
+  const getSenderName = (msg: any) => {
+    if (!msg.senderId) return 'سیستم';
+    if (typeof msg.senderId === 'object') {
+      return msg.senderId?.name || 'کاربر';
+    }
+    return 'کاربر';
+  };
+
   const getVehicleInfo = (order: Order) => {
     const vehicle = order.vehicleId as any;
     if (typeof vehicle === 'object') {
@@ -314,6 +384,7 @@ export function TechnicianDashboard() {
   const navItems = [
     { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { id: 'orders', label: 'سفارش‌ها', icon: ClipboardList },
+    { id: 'chat', label: 'پیام‌ها', icon: MessageSquare },
     { id: 'settings', label: 'تنظیمات', icon: Settings },
   ];
 
@@ -930,6 +1001,126 @@ export function TechnicianDashboard() {
                   </div>
                 )}
               </GlassCard>
+            </div>
+          )}
+
+          {/* Chat Tab */}
+          {activeTab === 'chat' && (
+            <div className="space-y-6">
+              <h1 className="text-2xl font-bold text-white">پیام‌ها</h1>
+
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* Conversations List */}
+                <div className="md:col-span-1 space-y-3">
+                  {isLoadingChat ? (
+                    <div className="flex justify-center py-10">
+                      <div className="spinner" />
+                    </div>
+                  ) : conversations.length === 0 ? (
+                    <GlassCard padding="md" className="text-center">
+                      <MessageSquare className="w-12 h-12 mx-auto mb-4 text-dark-600" />
+                      <p className="text-dark-400 text-sm">مکالمه‌ای وجود ندارد</p>
+                    </GlassCard>
+                  ) : (
+                    conversations.map((conv) => (
+                      <GlassCard
+                        key={conv._id}
+                        hoverable
+                        padding="sm"
+                        onClick={() => handleSelectConversation(conv)}
+                        className={cn(
+                          'cursor-pointer',
+                          selectedConversation?._id === conv._id && 'ring-2 ring-blue-600'
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-dark-800 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-dark-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-white text-sm truncate">
+                              {getOtherParticipant(conv)}
+                            </p>
+                            <p className="text-xs text-dark-500 truncate">
+                              {conv.lastMessage?.text || 'بدون پیام'}
+                            </p>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    ))
+                  )}
+                </div>
+
+                {/* Messages View */}
+                <div className="md:col-span-2">
+                  {selectedConversation ? (
+                    <GlassCard padding="none" className="h-[400px] flex flex-col">
+                      {/* Header */}
+                      <div className="p-4 border-b border-dark-700">
+                        <p className="font-semibold text-white">
+                          {getOtherParticipant(selectedConversation)}
+                        </p>
+                        <p className="text-xs text-dark-400">
+                          {selectedConversation.type === 'support' ? 'پشتیبانی' : 'مکالمه'}
+                        </p>
+                      </div>
+
+                      {/* Messages */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {messages.map((msg) => {
+                          const isMe = typeof msg.senderId === 'object'
+                            ? msg.senderId?._id === user?.id
+                            : msg.senderId === user?.id;
+                          return (
+                            <div key={msg._id} className={cn('flex', isMe ? 'justify-end' : 'justify-start')}>
+                              <div className={cn(
+                                'max-w-[70%] rounded-lg p-3',
+                                isMe ? 'bg-blue-600' : 'bg-dark-800'
+                              )}>
+                                {!isMe && (
+                                  <p className="text-xs text-blue-400 mb-1">{getSenderName(msg)}</p>
+                                )}
+                                <p className="text-white text-sm">{msg.text}</p>
+                                <p className="text-xs text-dark-400 mt-1">
+                                  {formatDateSmart(msg.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Message Input */}
+                      <div className="p-4 border-t border-dark-700">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                            placeholder="پیام خود را بنویسید..."
+                            className="flex-1 bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-dark-500 focus:border-blue-500 focus:outline-none"
+                          />
+                          <Button
+                            onClick={handleSendMessage}
+                            isLoading={isSendingMessage}
+                            disabled={!newMessage.trim()}
+                          >
+                            <Send className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  ) : (
+                    <GlassCard padding="lg" className="h-[400px] flex items-center justify-center">
+                      <div className="text-center">
+                        <MessageSquare className="w-16 h-16 mx-auto mb-4 text-dark-600" />
+                        <p className="text-dark-400">یک مکالمه را انتخاب کنید</p>
+                      </div>
+                    </GlassCard>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
