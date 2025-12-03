@@ -87,7 +87,7 @@ export const sendOTP = async (req: Request, res: Response): Promise<void> => {
  */
 export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phone, code, name } = req.body;
+    const { phone, code, name, nationalId } = req.body;
 
     if (!phone || !code) {
       res.status(400).json({
@@ -147,6 +147,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
       user = await User.create({
         phone: formattedPhone,
         name: name || `کاربر ${formattedPhone.slice(-4)}`,
+        nationalId: nationalId,
         role: 'customer',
       });
 

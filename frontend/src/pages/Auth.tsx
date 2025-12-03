@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Phone, ArrowRight, User, CreditCard, Loader2 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -16,7 +16,32 @@ import {
   toEnglishDigits,
 } from '../utils/helpers';
 
-type Step = 'phone' | 'otp' | 'name';
+type Step = 'phone' | 'otp' | 'register';
+
+// Iranian National ID validation
+function isValidNationalId(code: string): boolean {
+  const nationalId = toEnglishDigits(code).replace(/\D/g, '');
+
+  if (nationalId.length !== 10) return false;
+
+  // Check if all digits are the same
+  if (/^(\d)\1{9}$/.test(nationalId)) return false;
+
+  // Calculate checksum
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(nationalId[i]) * (10 - i);
+  }
+
+  const remainder = sum % 11;
+  const checkDigit = parseInt(nationalId[9]);
+
+  if (remainder < 2) {
+    return checkDigit === remainder;
+  } else {
+    return checkDigit === 11 - remainder;
+  }
+}
 
 export function Auth() {
   const navigate = useNavigate();
@@ -27,6 +52,7 @@ export function Auth() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
+  const [nationalId, setNationalId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
@@ -103,7 +129,7 @@ export function Auth() {
 
       if (newUser && !name) {
         setIsNewUser(true);
-        setStep('name');
+        setStep('register');
         setIsLoading(false);
         return;
       }
@@ -120,9 +146,15 @@ export function Auth() {
     }
   };
 
-  const handleSetName = async () => {
+  const handleRegister = async () => {
     if (!name.trim()) {
-      setError('لطفاً نام خود را وارد کنید');
+      setError('لطفاً نام و نام خانوادگی خود را وارد کنید');
+      return;
+    }
+
+    const cleanNationalId = toEnglishDigits(nationalId).replace(/\D/g, '');
+    if (!cleanNationalId || !isValidNationalId(cleanNationalId)) {
+      setError('کد ملی نامعتبر است');
       return;
     }
 
@@ -133,7 +165,8 @@ export function Auth() {
       const response = await authAPI.verifyOTP(
         formatPhoneForAPI(phone),
         otp,
-        name.trim()
+        name.trim(),
+        cleanNationalId
       );
 
       const { accessToken, refreshToken, user } = response.data;
@@ -158,7 +191,7 @@ export function Auth() {
       setStep('phone');
       setOtp('');
       setError('');
-    } else if (step === 'name') {
+    } else if (step === 'register') {
       setStep('otp');
       setError('');
     }
@@ -185,12 +218,12 @@ export function Auth() {
             <h1 className="text-2xl font-bold text-white mb-2">
               {step === 'phone' && 'ورود به اکسون موتور'}
               {step === 'otp' && 'تایید شماره موبایل'}
-              {step === 'name' && 'تکمیل اطلاعات'}
+              {step === 'register' && 'تکمیل ثبت‌نام'}
             </h1>
             <p className="text-dark-400">
               {step === 'phone' && 'شماره موبایل خود را وارد کنید'}
               {step === 'otp' && `کد تایید به ${formatPhoneDisplay(phone)} ارسال شد`}
-              {step === 'name' && 'لطفاً نام خود را وارد کنید'}
+              {step === 'register' && 'لطفاً اطلاعات خود را وارد کنید'}
             </p>
           </div>
 
@@ -286,15 +319,15 @@ export function Auth() {
               </motion.div>
             )}
 
-            {/* Name Step */}
-            {step === 'name' && (
+            {/* Register Step */}
+            {step === 'register' && (
               <motion.div
-                key="name"
+                key="register"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
               >
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <Input
                     type="text"
                     placeholder="نام و نام خانوادگی"
@@ -303,13 +336,29 @@ export function Auth() {
                       setName(e.target.value);
                       setError('');
                     }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSetName()}
-                    error={error}
+                    icon={<User className="w-5 h-5" />}
                     autoFocus
                   />
 
+                  <Input
+                    type="text"
+                    placeholder="کد ملی"
+                    value={nationalId}
+                    onChange={(e) => {
+                      setNationalId(e.target.value);
+                      setError('');
+                    }}
+                    icon={<CreditCard className="w-5 h-5" />}
+                    dir="ltr"
+                    className="text-center tracking-wider"
+                  />
+
+                  {error && (
+                    <p className="text-center text-red-400 text-sm">{error}</p>
+                  )}
+
                   <Button
-                    onClick={handleSetName}
+                    onClick={handleRegister}
                     isLoading={isLoading}
                     fullWidth
                   >

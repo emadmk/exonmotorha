@@ -12,6 +12,14 @@ export interface ITimelineStep {
   orderIndex: number;
 }
 
+export interface ILocation {
+  address: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+}
+
 export interface IOrder extends Document {
   _id: mongoose.Types.ObjectId;
   orderNumber: string;
@@ -22,11 +30,9 @@ export interface IOrder extends Document {
   priority: OrderPriority;
   issues: string[];
   description?: string;
-  location: string;
-  latitude?: number;
-  longitude?: number;
-  scheduledDate: Date;
-  scheduledTime: string;
+  location?: ILocation;
+  scheduledDate?: Date;
+  scheduledTime?: string;
   timeline: ITimelineStep[];
   estimatedCostMin?: number;
   estimatedCostMax?: number;
@@ -96,22 +102,17 @@ const orderSchema = new Schema<IOrder>(
       type: String,
     },
     location: {
-      type: String,
-      required: true,
-    },
-    latitude: {
-      type: Number,
-    },
-    longitude: {
-      type: Number,
+      address: { type: String },
+      coordinates: {
+        lat: { type: Number },
+        lng: { type: Number },
+      },
     },
     scheduledDate: {
       type: Date,
-      required: true,
     },
     scheduledTime: {
       type: String,
-      required: true,
     },
     timeline: [timelineStepSchema],
     estimatedCostMin: {

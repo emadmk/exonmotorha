@@ -17,14 +17,12 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       issues,
       description,
       location,
-      latitude,
-      longitude,
       scheduledDate,
       scheduledTime,
     } = req.body;
 
     // Validation
-    if (!vehicleId || !issues || !issues.length || !location || !scheduledDate || !scheduledTime) {
+    if (!vehicleId || !issues || !issues.length) {
       res.status(400).json({
         success: false,
         message: 'اطلاعات ناقص است',
@@ -53,20 +51,42 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     const orderCount = await Order.countDocuments();
     const orderNumber = `CR-${String(orderCount + 1001).padStart(4, '0')}`;
 
-    const order = await Order.create({
+    // Build order data
+    const orderData: any = {
       orderNumber,
       userId,
       vehicleId,
       issues,
       description,
-      location,
-      latitude,
-      longitude,
-      scheduledDate: new Date(scheduledDate),
-      scheduledTime,
       timeline,
       progressPercentage: calculateProgress(timeline),
-    });
+    };
+
+    // Handle location - support both new format (object) and legacy format (string)
+    if (location) {
+      if (typeof location === 'object') {
+        orderData.location = {
+          address: location.address || '',
+          coordinates: location.coordinates ? {
+            lat: location.coordinates.lat,
+            lng: location.coordinates.lng,
+          } : undefined,
+        };
+      } else {
+        // Legacy string format
+        orderData.location = { address: location };
+      }
+    }
+
+    // Optional scheduled date/time
+    if (scheduledDate) {
+      orderData.scheduledDate = new Date(scheduledDate);
+    }
+    if (scheduledTime) {
+      orderData.scheduledTime = scheduledTime;
+    }
+
+    const order = await Order.create(orderData);
 
     // Create notification for admins
     const admins = await User.find({ role: 'admin' });

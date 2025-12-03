@@ -9,6 +9,13 @@ import { Dashboard } from './pages/Dashboard';
 import { RequestForm } from './pages/RequestForm';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { TechnicianDashboard } from './pages/TechnicianDashboard';
+import { OrdersPage } from './pages/OrdersPage';
+import { OrderDetailPage } from './pages/OrderDetailPage';
+import { MessagesPage } from './pages/MessagesPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { ReceiptsPage } from './pages/ReceiptsPage';
+import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -64,93 +71,6 @@ function SuccessPage() {
   );
 }
 
-// Placeholder pages
-function OrdersPage() {
-  return (
-    <div className="min-h-screen bg-dark-950 p-4 pb-20">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-6">سفارش‌های من</h1>
-        <div className="glass-card p-8 text-center">
-          <p className="text-dark-400">لیست سفارش‌های شما در این صفحه نمایش داده می‌شود</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MessagesPage() {
-  return (
-    <div className="min-h-screen bg-dark-950 p-4 pb-20">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-6">پیام‌ها</h1>
-        <div className="glass-card p-8 text-center">
-          <p className="text-dark-400">پیام‌های شما در این صفحه نمایش داده می‌شود</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SettingsPage() {
-  const { user, logout } = useAuthStore();
-
-  return (
-    <div className="min-h-screen bg-dark-950 p-4 pb-20">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-6">تنظیمات</h1>
-        <div className="glass-card p-6 space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center">
-              <span className="text-2xl text-dark-950 font-bold">
-                {user?.name?.charAt(0) || '?'}
-              </span>
-            </div>
-            <div>
-              <p className="font-semibold text-white">{user?.name}</p>
-              <p className="text-sm text-dark-400" dir="ltr">{user?.phone}</p>
-            </div>
-          </div>
-
-          <hr className="border-dark-700" />
-
-          <button
-            onClick={logout}
-            className="w-full py-3 text-center text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-          >
-            خروج از حساب کاربری
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NotificationsPage() {
-  return (
-    <div className="min-h-screen bg-dark-950 p-4 pb-20">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-6">اعلان‌ها</h1>
-        <div className="glass-card p-8 text-center">
-          <p className="text-dark-400">اعلان‌های شما در این صفحه نمایش داده می‌شود</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ReceiptsPage() {
-  return (
-    <div className="min-h-screen bg-dark-950 p-4 pb-20">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-6">رسیدها</h1>
-        <div className="glass-card p-8 text-center">
-          <p className="text-dark-400">رسیدها و فاکتورها در این صفحه نمایش داده می‌شود</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const { fetchUser, isAuthenticated } = useAuthStore();
 
@@ -184,6 +104,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['customer']}>
               <OrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders/:id"
+          element={
+            <ProtectedRoute allowedRoles={['customer']}>
+              <OrderDetailPage />
             </ProtectedRoute>
           }
         />
@@ -248,10 +176,10 @@ export default function App() {
           }
         />
         <Route
-          path="/admin/*"
+          path="/admin/orders/:id"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
+              <AdminOrderDetailPage />
             </ProtectedRoute>
           }
         />

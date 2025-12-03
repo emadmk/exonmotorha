@@ -38,6 +38,14 @@ export interface TimelineStep {
   orderIndex: number;
 }
 
+export interface OrderLocation {
+  address?: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+}
+
 export interface Order {
   _id: string;
   orderNumber: string;
@@ -48,11 +56,9 @@ export interface Order {
   priority: OrderPriority;
   issues: string[];
   description?: string;
-  location: string;
-  latitude?: number;
-  longitude?: number;
-  scheduledDate: string;
-  scheduledTime: string;
+  location?: OrderLocation;
+  scheduledDate?: string;
+  scheduledTime?: string;
   timeline: TimelineStep[];
   estimatedCostMin?: number;
   estimatedCostMax?: number;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,11 +8,10 @@ import {
   Car,
   AlertCircle,
   MapPin,
-  Calendar,
-  Clock,
   Check,
-  Camera,
   Plus,
+  Navigation,
+  Loader2,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Input } from '../components/ui/Input';
@@ -29,14 +28,18 @@ import {
   toEnglishDigits,
 } from '../utils/helpers';
 
-type Step = 'phone' | 'otp' | 'vehicle' | 'issues' | 'schedule';
+type Step = 'phone' | 'otp' | 'vehicle' | 'issues' | 'location';
 
 const steps = [
   { id: 'phone', title: 'شماره موبایل' },
   { id: 'vehicle', title: 'اطلاعات خودرو' },
   { id: 'issues', title: 'نوع مشکل' },
-  { id: 'schedule', title: 'زمان و مکان' },
+  { id: 'location', title: 'موقعیت مکانی' },
 ];
+
+// Default center: Tehran
+const DEFAULT_LAT = 35.6892;
+const DEFAULT_LNG = 51.3890;
 
 export function RequestForm() {
   const navigate = useNavigate();
@@ -64,10 +67,11 @@ export function RequestForm() {
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
   const [description, setDescription] = useState('');
 
-  const [location, setLocation] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const mapRef = useRef<HTMLIFrameElement>(null);
 
   // Load vehicles if authenticated
   useEffect(() => {
@@ -175,6 +179,11 @@ export function RequestForm() {
       return;
     }
 
+    if (!coordinates) {
+      setError('لطفاً موقعیت مکانی را انتخاب کنید');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
@@ -183,9 +192,13 @@ export function RequestForm() {
         vehicleId: selectedVehicle,
         issues: selectedIssues,
         description,
-        location,
-        scheduledDate,
-        scheduledTime,
+        location: {
+          address: locationAddress,
+          coordinates: {
+            lat: coordinates.lat,
+            lng: coordinates.lng,
+          },
+        },
       });
 
       navigate('/success', {
@@ -195,6 +208,62 @@ export function RequestForm() {
       setError(err.response?.data?.message || 'خطا در ثبت سفارش');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    setIsLoadingLocation(true);
+    setError('');
+
+    if (!navigator.geolocation) {
+      setError('مرورگر شما از موقعیت‌یابی پشتیبانی نمی‌کند');
+      setIsLoadingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setCoordinates({ lat: latitude, lng: longitude });
+
+        // Try to get address from coordinates (reverse geocoding)
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=fa`
+          );
+          const data = await response.json();
+          if (data.display_name) {
+            setLocationAddress(data.display_name);
+          }
+        } catch (e) {
+          console.error('Error getting address:', e);
+        }
+
+        setIsLoadingLocation(false);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        setError('دسترسی به موقعیت مکانی امکان‌پذیر نیست');
+        setIsLoadingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const handleMapClick = async (lat: number, lng: number) => {
+    setCoordinates({ lat, lng });
+
+    // Try to get address from coordinates
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fa`
+      );
+      const data = await response.json();
+      if (data.display_name) {
+        setLocationAddress(data.display_name);
+      }
+    } catch (e) {
+      console.error('Error getting address:', e);
     }
   };
 
@@ -214,8 +283,8 @@ export function RequestForm() {
         return selectedVehicle || (newVehicle.brand && newVehicle.model && newVehicle.year);
       case 'issues':
         return selectedIssues.length > 0;
-      case 'schedule':
-        return location && scheduledDate && scheduledTime && acceptTerms;
+      case 'location':
+        return coordinates && acceptTerms;
       default:
         return false;
     }
@@ -556,7 +625,7 @@ export function RequestForm() {
                     <ArrowRight className="w-5 h-5" />
                   </Button>
                   <Button
-                    onClick={() => setStep('schedule')}
+                    onClick={() => setStep('location')}
                     disabled={selectedIssues.length === 0}
                     fullWidth
                   >
@@ -568,10 +637,10 @@ export function RequestForm() {
             </motion.div>
           )}
 
-          {/* Schedule Step */}
-          {step === 'schedule' && (
+          {/* Location Step */}
+          {step === 'location' && (
             <motion.div
-              key="schedule"
+              key="location"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
@@ -582,31 +651,68 @@ export function RequestForm() {
                     <MapPin className="w-8 h-8 text-gold-500" />
                   </div>
                   <h2 className="text-xl font-bold text-white mb-2">
-                    زمان و مکان
+                    موقعیت مکانی
                   </h2>
+                  <p className="text-dark-400 text-sm">
+                    محل خودرو را روی نقشه مشخص کنید
+                  </p>
                 </div>
 
                 <div className="space-y-4">
+                  {/* Get Current Location Button */}
+                  <Button
+                    variant="secondary"
+                    onClick={getCurrentLocation}
+                    disabled={isLoadingLocation}
+                    fullWidth
+                  >
+                    {isLoadingLocation ? (
+                      <Loader2 className="w-5 h-5 animate-spin ml-2" />
+                    ) : (
+                      <Navigation className="w-5 h-5 ml-2" />
+                    )}
+                    موقعیت فعلی من
+                  </Button>
+
+                  {/* Map */}
+                  <div className="relative rounded-xl overflow-hidden border border-dark-700">
+                    <iframe
+                      ref={mapRef}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                        (coordinates?.lng || DEFAULT_LNG) - 0.01
+                      }%2C${(coordinates?.lat || DEFAULT_LAT) - 0.01}%2C${
+                        (coordinates?.lng || DEFAULT_LNG) + 0.01
+                      }%2C${(coordinates?.lat || DEFAULT_LAT) + 0.01}&layer=mapnik&marker=${
+                        coordinates?.lat || DEFAULT_LAT
+                      }%2C${coordinates?.lng || DEFAULT_LNG}`}
+                      width="100%"
+                      height="250"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      className="bg-dark-800"
+                    />
+                    {!coordinates && (
+                      <div className="absolute inset-0 bg-dark-950/80 flex items-center justify-center">
+                        <p className="text-dark-400 text-sm text-center px-4">
+                          برای انتخاب موقعیت، دکمه "موقعیت فعلی من" را بزنید یا آدرس را وارد کنید
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Address */}
                   <Input
                     placeholder="آدرس محل خدمت"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    value={locationAddress}
+                    onChange={(e) => setLocationAddress(e.target.value)}
                     icon={<MapPin className="w-5 h-5" />}
                   />
 
-                  <Input
-                    type="date"
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
-                    icon={<Calendar className="w-5 h-5" />}
-                  />
-
-                  <Input
-                    type="time"
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                    icon={<Clock className="w-5 h-5" />}
-                  />
+                  {coordinates && (
+                    <p className="text-xs text-dark-500 text-center">
+                      مختصات: {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+                    </p>
+                  )}
 
                   <label className="flex items-start gap-3 p-4 bg-dark-800/50 rounded-xl cursor-pointer">
                     <input
