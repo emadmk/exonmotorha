@@ -49,7 +49,12 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       completedAt: index === 0 ? new Date() : undefined,
     }));
 
+    // Generate order number
+    const orderCount = await Order.countDocuments();
+    const orderNumber = `CR-${String(orderCount + 1001).padStart(4, '0')}`;
+
     const order = await Order.create({
+      orderNumber,
       userId,
       vehicleId,
       issues,

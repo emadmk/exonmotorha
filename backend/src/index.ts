@@ -14,6 +14,9 @@ import { initializeSocket } from './services/socket.service';
 const app = express();
 const httpServer = createServer(app);
 
+// Trust proxy (for Nginx reverse proxy)
+app.set('trust proxy', 1);
+
 // Initialize Socket.io
 initializeSocket(httpServer);
 
