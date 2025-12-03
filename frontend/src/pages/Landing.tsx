@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   Phone,
   MapPin,
+  Mail,
   Zap,
   Battery,
   Settings,
@@ -154,7 +155,7 @@ export function Landing() {
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <a
-                href="tel:02191009900"
+                href="tel:03491097545"
                 className="btn-secondary text-lg px-8 py-4 inline-flex items-center justify-center gap-2"
               >
                 <Phone className="w-5 h-5" />
@@ -367,13 +368,11 @@ export function Landing() {
       {/* Footer */}
       <footer className="bg-dark-900/80 border-t border-dark-700/50 py-12">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-gradient-gold rounded-xl flex items-center justify-center">
-                  <span className="text-dark-950 font-bold">اکسون</span>
-                </div>
-                <span className="text-xl font-bold gradient-text">اکسون موتور</span>
+                <span className="text-2xl font-bold gradient-text">اکسون</span>
+                <span className="text-xl font-bold text-white">موتور</span>
               </div>
               <p className="text-dark-400 text-sm">
                 ارائه‌دهنده خدمات تعمیر و نگهداری خودرو در محل
@@ -391,28 +390,20 @@ export function Landing() {
 
             <div>
               <h4 className="font-semibold text-white mb-4">تماس با ما</h4>
-              <ul className="space-y-2 text-dark-400 text-sm">
-                <li className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span dir="ltr">021-91009900</span>
+              <ul className="space-y-3 text-dark-400 text-sm">
+                <li className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>کرمان، شهرک باهنر، بحرالعلوم ۱۳، پلاک ۲۱</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  <span>تهران، ایران</span>
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <span dir="ltr">034-91097545 - 09133422859</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span>info@exonmotor.ir</span>
                 </li>
               </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-white mb-4">نماد اعتماد</h4>
-              <div className="flex gap-2">
-                <div className="w-16 h-16 bg-dark-800 rounded-lg flex items-center justify-center">
-                  <Shield className="w-8 h-8 text-dark-600" />
-                </div>
-                <div className="w-16 h-16 bg-dark-800 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="w-8 h-8 text-dark-600" />
-                </div>
-              </div>
             </div>
           </div>
 
