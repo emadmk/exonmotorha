@@ -19,6 +19,12 @@ import {
   Mail,
   Save,
   Edit2,
+  DollarSign,
+  FileText,
+  Play,
+  Pause,
+  Package,
+  Send,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -58,6 +64,16 @@ export function TechnicianDashboard() {
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  // Order workflow state
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showCostForm, setShowCostForm] = useState(false);
+  const [costFormData, setCostFormData] = useState({
+    estimatedCostMin: '',
+    estimatedCostMax: '',
+    notes: '',
+  });
+  const [technicianNotes, setTechnicianNotes] = useState('');
 
   useEffect(() => {
     loadOrders();
@@ -135,6 +151,87 @@ export function TechnicianDashboard() {
     setAvatarFile(null);
     setAvatarPreview(null);
   };
+
+  // Order workflow functions
+  const handleUpdateOrderStatus = async (newStatus: OrderStatus) => {
+    if (!selectedOrder) return;
+    setIsUpdatingStatus(true);
+    try {
+      await orderAPI.technicianUpdate(selectedOrder._id, { status: newStatus });
+      // Reload order
+      const response = await orderAPI.getOne(selectedOrder._id);
+      setSelectedOrder(response.data.order);
+      // Reload orders list
+      loadOrders();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleSubmitCostEstimate = async () => {
+    if (!selectedOrder) return;
+    setIsUpdatingStatus(true);
+    try {
+      await orderAPI.technicianUpdate(selectedOrder._id, {
+        estimatedCostMin: Number(costFormData.estimatedCostMin),
+        estimatedCostMax: Number(costFormData.estimatedCostMax) || Number(costFormData.estimatedCostMin),
+        notes: costFormData.notes,
+      });
+      // Reload order
+      const response = await orderAPI.getOne(selectedOrder._id);
+      setSelectedOrder(response.data.order);
+      setShowCostForm(false);
+      setCostFormData({ estimatedCostMin: '', estimatedCostMax: '', notes: '' });
+    } catch (error) {
+      console.error('Error submitting cost estimate:', error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleUpdateTimeline = async (stepIndex: number) => {
+    if (!selectedOrder) return;
+    const step = selectedOrder.timeline[stepIndex];
+    if (!step || step.status === 'completed') return;
+
+    setIsUpdatingStatus(true);
+    try {
+      await orderAPI.updateTimeline(selectedOrder._id, step._id || '', {
+        status: 'completed',
+      });
+      // Reload order
+      const response = await orderAPI.getOne(selectedOrder._id);
+      setSelectedOrder(response.data.order);
+    } catch (error) {
+      console.error('Error updating timeline:', error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!selectedOrder) return;
+    setIsUpdatingStatus(true);
+    try {
+      await orderAPI.technicianUpdate(selectedOrder._id, { notes: technicianNotes });
+      // Reload order
+      const response = await orderAPI.getOne(selectedOrder._id);
+      setSelectedOrder(response.data.order);
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Initialize notes when order is selected
+  useEffect(() => {
+    if (selectedOrder) {
+      setTechnicianNotes(selectedOrder.notes || '');
+    }
+  }, [selectedOrder?._id]);
 
   const getVehicleInfo = (order: Order) => {
     const vehicle = order.vehicleId as any;
@@ -520,6 +617,155 @@ export function TechnicianDashboard() {
                 </div>
               </GlassCard>
 
+              {/* Status Actions */}
+              <GlassCard padding="lg">
+                <h3 className="font-semibold text-white mb-4">وضعیت سفارش</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedOrder.status === 'planned' && (
+                    <Button
+                      onClick={() => handleUpdateOrderStatus('in_progress')}
+                      isLoading={isUpdatingStatus}
+                      className="!bg-blue-600 hover:!bg-blue-500"
+                    >
+                      <Play className="w-4 h-4 ml-2" />
+                      شروع کار
+                    </Button>
+                  )}
+                  {selectedOrder.status === 'in_progress' && (
+                    <>
+                      <Button
+                        onClick={() => handleUpdateOrderStatus('waiting_for_parts')}
+                        isLoading={isUpdatingStatus}
+                        variant="outline"
+                        className="!border-purple-600 !text-purple-400"
+                      >
+                        <Package className="w-4 h-4 ml-2" />
+                        انتظار قطعه
+                      </Button>
+                      <Button
+                        onClick={() => handleUpdateOrderStatus('completed')}
+                        isLoading={isUpdatingStatus}
+                        className="!bg-emerald-600 hover:!bg-emerald-500"
+                      >
+                        <CheckCircle className="w-4 h-4 ml-2" />
+                        اتمام کار
+                      </Button>
+                    </>
+                  )}
+                  {selectedOrder.status === 'waiting_for_parts' && (
+                    <Button
+                      onClick={() => handleUpdateOrderStatus('in_progress')}
+                      isLoading={isUpdatingStatus}
+                      className="!bg-blue-600 hover:!bg-blue-500"
+                    >
+                      <Play className="w-4 h-4 ml-2" />
+                      ادامه کار
+                    </Button>
+                  )}
+                </div>
+              </GlassCard>
+
+              {/* Cost Estimation */}
+              <GlassCard padding="lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-white flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-gold-500" />
+                    برآورد هزینه
+                  </h3>
+                  {!showCostForm && (
+                    <button
+                      onClick={() => setShowCostForm(true)}
+                      className="text-blue-400 text-sm"
+                    >
+                      {selectedOrder.estimatedCostMin ? 'ویرایش' : 'افزودن'}
+                    </button>
+                  )}
+                </div>
+
+                {showCostForm ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="number"
+                        placeholder="حداقل (تومان)"
+                        value={costFormData.estimatedCostMin}
+                        onChange={(e) => setCostFormData({ ...costFormData, estimatedCostMin: e.target.value })}
+                        dir="ltr"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="حداکثر (تومان)"
+                        value={costFormData.estimatedCostMax}
+                        onChange={(e) => setCostFormData({ ...costFormData, estimatedCostMax: e.target.value })}
+                        dir="ltr"
+                      />
+                    </div>
+                    <textarea
+                      placeholder="توضیحات برآورد..."
+                      value={costFormData.notes}
+                      onChange={(e) => setCostFormData({ ...costFormData, notes: e.target.value })}
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-3 text-white placeholder-dark-500 focus:border-blue-500 focus:outline-none min-h-[80px] resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleSubmitCostEstimate}
+                        isLoading={isUpdatingStatus}
+                        fullWidth
+                      >
+                        <Send className="w-4 h-4 ml-2" />
+                        ارسال برآورد
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowCostForm(false);
+                          setCostFormData({ estimatedCostMin: '', estimatedCostMax: '', notes: '' });
+                        }}
+                      >
+                        انصراف
+                      </Button>
+                    </div>
+                  </div>
+                ) : selectedOrder.estimatedCostMin ? (
+                  <div className="p-4 bg-dark-800/50 rounded-xl">
+                    <p className="text-2xl font-bold text-gold-500">
+                      {toPersianDigits(selectedOrder.estimatedCostMin.toLocaleString())}
+                      {selectedOrder.estimatedCostMax && selectedOrder.estimatedCostMax !== selectedOrder.estimatedCostMin && (
+                        <span className="text-dark-400 text-base font-normal">
+                          {' '} تا {toPersianDigits(selectedOrder.estimatedCostMax.toLocaleString())}
+                        </span>
+                      )}
+                      <span className="text-sm text-dark-400 font-normal"> تومان</span>
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-dark-400 text-sm">هنوز برآورد هزینه ثبت نشده است.</p>
+                )}
+              </GlassCard>
+
+              {/* Technician Notes */}
+              <GlassCard padding="lg">
+                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                  یادداشت‌های تکنسین
+                </h3>
+                <textarea
+                  placeholder="یادداشت‌های خود را اینجا بنویسید..."
+                  value={technicianNotes}
+                  onChange={(e) => setTechnicianNotes(e.target.value)}
+                  className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-3 text-white placeholder-dark-500 focus:border-blue-500 focus:outline-none min-h-[100px] resize-none mb-3"
+                />
+                <Button
+                  onClick={handleSaveNotes}
+                  isLoading={isUpdatingStatus}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Save className="w-4 h-4 ml-2" />
+                  ذخیره یادداشت
+                </Button>
+              </GlassCard>
+
               {/* Timeline */}
               <GlassCard padding="lg">
                 <h3 className="font-semibold text-white mb-4">مراحل انجام کار</h3>
@@ -527,18 +773,22 @@ export function TechnicianDashboard() {
                   {selectedOrder.timeline.map((step, index) => (
                     <div key={index} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className={cn(
-                          'w-8 h-8 rounded-full flex items-center justify-center',
-                          step.status === 'completed' ? 'bg-emerald-600' :
-                          step.status === 'current' ? 'bg-blue-600' :
-                          'bg-dark-700'
-                        )}>
+                        <button
+                          onClick={() => step.status !== 'completed' && handleUpdateTimeline(index)}
+                          disabled={step.status === 'completed' || isUpdatingStatus}
+                          className={cn(
+                            'w-8 h-8 rounded-full flex items-center justify-center transition-all',
+                            step.status === 'completed' ? 'bg-emerald-600' :
+                            step.status === 'current' ? 'bg-blue-600 hover:bg-blue-500 cursor-pointer' :
+                            'bg-dark-700 hover:bg-dark-600 cursor-pointer'
+                          )}
+                        >
                           {step.status === 'completed' ? (
                             <CheckCircle className="w-4 h-4 text-white" />
                           ) : (
                             <span className="text-xs text-white">{toPersianDigits(index + 1)}</span>
                           )}
-                        </div>
+                        </button>
                         {index < selectedOrder.timeline.length - 1 && (
                           <div className={cn(
                             'w-0.5 h-8 mt-1',
@@ -557,6 +807,9 @@ export function TechnicianDashboard() {
                         </p>
                         {step.description && (
                           <p className="text-sm text-dark-400">{step.description}</p>
+                        )}
+                        {step.status !== 'completed' && (
+                          <p className="text-xs text-dark-500 mt-1">کلیک کنید برای تکمیل</p>
                         )}
                       </div>
                     </div>
