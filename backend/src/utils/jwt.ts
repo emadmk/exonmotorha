@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config';
 import { IUser } from '../models';
 
@@ -15,9 +15,11 @@ export const generateAccessToken = (user: IUser): string => {
     role: user.role,
   };
 
-  return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
-  });
+  const options: SignOptions = {
+    expiresIn: config.jwt.expiresIn as string,
+  };
+
+  return jwt.sign(payload, config.jwt.secret, options);
 };
 
 export const generateRefreshToken = (user: IUser): string => {
@@ -27,9 +29,11 @@ export const generateRefreshToken = (user: IUser): string => {
     role: user.role,
   };
 
-  return jwt.sign(payload, config.jwt.refreshSecret, {
-    expiresIn: config.jwt.refreshExpiresIn,
-  });
+  const options: SignOptions = {
+    expiresIn: config.jwt.refreshExpiresIn as string,
+  };
+
+  return jwt.sign(payload, config.jwt.refreshSecret, options);
 };
 
 export const verifyAccessToken = (token: string): TokenPayload | null => {

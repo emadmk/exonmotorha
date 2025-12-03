@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { User, Order, Receipt, Technician, Vehicle, Notification } from '../models';
+import { User, Order, Receipt, Technician, Vehicle, Notification, ITechnician } from '../models';
 import { AuthRequest } from '../middleware/auth.middleware';
 import mongoose from 'mongoose';
 
@@ -119,7 +119,7 @@ export const getTechnicians = async (req: AuthRequest, res: Response): Promise<v
 
         return {
           ...user.toObject(),
-          technicianInfo: techInfo || {},
+          technicianInfo: techInfo as ITechnician | null,
           activeOrders,
         };
       })
