@@ -14,7 +14,7 @@ interface KavenegarResponse {
 // Template names - must match exactly in Kavenegar panel
 const TEMPLATES = {
   VERIFY: 'verify',
-  ORDER_STATUS: 'order-status',
+  ORDER_STATUS: 'orderstatus',
   NEW_ORDER_ADMIN: 'new-order-admin',
   TECHNICIAN_ASSIGNED: 'technician-assigned',
   ORDER_ASSIGNED_TECH: 'order-assigned-tech',
