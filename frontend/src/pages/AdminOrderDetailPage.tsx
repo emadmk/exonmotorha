@@ -21,6 +21,7 @@ import {
   X,
   Plus,
   Trash2,
+  Image,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { StatusChip } from '../components/ui/StatusChip';
@@ -441,6 +442,41 @@ export function AdminOrderDetailPage() {
             </div>
           )}
         </GlassCard>
+
+        {/* Photos Section */}
+        {order.photos && order.photos.length > 0 && (
+          <GlassCard padding="md" className="md:col-span-2">
+            <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+              <Image className="w-5 h-5 text-gold-500" />
+              تصاویر ({toPersianDigits(order.photos.length)})
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {order.photos.map((photo: any, index: number) => (
+                <div key={photo._id || index} className="relative group">
+                  <img
+                    src={photo.url}
+                    alt={photo.caption || `تصویر ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(photo.url, '_blank')}
+                  />
+                  {photo.caption && (
+                    <p className="text-xs text-dark-400 mt-1 truncate">{photo.caption}</p>
+                  )}
+                  <div className="absolute top-2 right-2">
+                    <span className={cn(
+                      'px-2 py-0.5 rounded text-xs',
+                      photo.type === 'before' ? 'bg-blue-500/80 text-white' :
+                      photo.type === 'after' ? 'bg-emerald-500/80 text-white' :
+                      'bg-dark-800/80 text-dark-300'
+                    )}>
+                      {photo.type === 'before' ? 'قبل' : photo.type === 'after' ? 'بعد' : 'سایر'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Status Update */}
         <GlassCard padding="md" className="md:col-span-2">

@@ -395,7 +395,7 @@ export function Landing() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Phone className="w-4 h-4 flex-shrink-0" />
-                  <span dir="ltr">034-91097545 - 09133422859</span>
+                  <span dir="ltr">034-91097545</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Mail className="w-4 h-4 flex-shrink-0" />

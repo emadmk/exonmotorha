@@ -31,6 +31,15 @@ class SMSService {
   }
 
   /**
+   * Sanitize token value for Kavenegar (replace spaces with dash, remove special chars)
+   */
+  private sanitizeToken(value: string): string {
+    if (!value) return '';
+    // Replace spaces with dash and remove any problematic characters
+    return value.trim().replace(/\s+/g, '-');
+  }
+
+  /**
    * Send templated SMS using Kavenegar lookup
    */
   private async sendTemplate(
@@ -51,13 +60,13 @@ class SMSService {
       const params: any = {
         receptor: phone,
         template,
-        token,
+        token: this.sanitizeToken(token),
       };
 
-      if (token2) params.token2 = token2;
-      if (token3) params.token3 = token3;
-      if (token10) params.token10 = token10;
-      if (token20) params.token20 = token20;
+      if (token2) params.token2 = this.sanitizeToken(token2);
+      if (token3) params.token3 = this.sanitizeToken(token3);
+      if (token10) params.token10 = this.sanitizeToken(token10);
+      if (token20) params.token20 = this.sanitizeToken(token20);
 
       const response = await axios.get<KavenegarResponse>(
         `${KAVENEGAR_BASE_URL}/${this.apiKey}/verify/lookup.json`,
