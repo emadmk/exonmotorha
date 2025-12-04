@@ -59,6 +59,16 @@ export interface TimelineStep {
   orderIndex: number;
 }
 
+export interface OrderChangelog {
+  _id: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+  changedBy: string | User;
+  changedAt: string;
+  note?: string;
+}
+
 export interface OrderLocation {
   address?: string;
   coordinates?: {
@@ -82,6 +92,7 @@ export interface Order {
   scheduledTime?: string;
   timeline: TimelineStep[];
   photos?: OrderPhoto[];
+  changelog?: OrderChangelog[];
   estimatedCostMin?: number;
   estimatedCostMax?: number;
   finalCost?: number;
