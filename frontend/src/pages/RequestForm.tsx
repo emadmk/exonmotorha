@@ -28,7 +28,7 @@ import {
   toEnglishDigits,
 } from '../utils/helpers';
 
-type Step = 'phone' | 'otp' | 'vehicle' | 'issues' | 'location';
+type Step = 'phone' | 'otp' | 'register' | 'vehicle' | 'issues' | 'location';
 
 const steps = [
   { id: 'phone', title: 'شماره موبایل' },
@@ -81,6 +81,7 @@ export function RequestForm() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [userName, setUserName] = useState('');
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
@@ -163,6 +164,14 @@ export function RequestForm() {
 
     try {
       const response = await authAPI.verifyOTP(formatPhoneForAPI(phone), code);
+
+      // Check if new user needs registration
+      if (response.data.needsRegistration) {
+        setStep('register');
+        setIsLoading(false);
+        return;
+      }
+
       const { accessToken, refreshToken, user } = response.data;
       login(accessToken, refreshToken, user);
       setStep('vehicle');
@@ -170,6 +179,28 @@ export function RequestForm() {
     } catch (err: any) {
       setError(err.response?.data?.message || 'کد تایید اشتباه است');
       setOtp('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!userName.trim()) {
+      setError('لطفاً نام خود را وارد کنید');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await authAPI.verifyOTP(formatPhoneForAPI(phone), otp, userName.trim());
+      const { accessToken, refreshToken, user } = response.data;
+      login(accessToken, refreshToken, user);
+      setStep('vehicle');
+      loadVehicles();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'خطا در ثبت‌نام');
     } finally {
       setIsLoading(false);
     }
@@ -327,7 +358,7 @@ export function RequestForm() {
   };
 
   const getStepIndex = () => {
-    if (step === 'phone' || step === 'otp') return 0;
+    if (step === 'phone' || step === 'otp' || step === 'register') return 0;
     return steps.findIndex((s) => s.id === step);
   };
 
@@ -485,6 +516,59 @@ export function RequestForm() {
                         : 'ارسال مجدد'}
                     </button>
                   </div>
+                </div>
+              </GlassCard>
+            </motion.div>
+          )}
+
+          {/* Register Step (New User) */}
+          {step === 'register' && (
+            <motion.div
+              key="register"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <GlassCard padding="lg">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gold-600/20 rounded-full flex items-center justify-center">
+                    <Phone className="w-8 h-8 text-gold-500" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white mb-2">
+                    ثبت‌نام
+                  </h2>
+                  <p className="text-dark-400">
+                    لطفاً نام خود را وارد کنید
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <Input
+                    placeholder="نام و نام خانوادگی"
+                    value={userName}
+                    onChange={(e) => {
+                      setUserName(e.target.value);
+                      setError('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                    error={error}
+                  />
+
+                  <Button
+                    onClick={handleRegister}
+                    isLoading={isLoading}
+                    disabled={!userName.trim()}
+                    fullWidth
+                  >
+                    ثبت‌نام و ادامه
+                  </Button>
+
+                  <button
+                    onClick={() => setStep('otp')}
+                    className="w-full text-center text-dark-400 hover:text-white text-sm"
+                  >
+                    بازگشت
+                  </button>
                 </div>
               </GlassCard>
             </motion.div>
