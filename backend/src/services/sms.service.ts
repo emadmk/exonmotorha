@@ -14,14 +14,13 @@ interface KavenegarResponse {
 // Template names - must match exactly in Kavenegar panel
 const TEMPLATES = {
   VERIFY: 'verify',
-  ORDER_NEW_CUSTOMER: 'ordernewcustomer',
-  ORDER_NEW_ADMIN: 'ordernewadmin',
-  ORDER_ASSIGNED_CUSTOMER: 'orderassignedcustomer',
-  ORDER_ASSIGNED_TECHNICIAN: 'orderassignedtechnician',
-  ORDER_STATUS: 'orderstatus',
-  ORDER_CANCELLED: 'ordercancelled',
-  NEW_MESSAGE: 'newmessage',
-  RECEIPT_CREATED: 'receiptcreated',
+  ORDER_STATUS: 'order-status',
+  NEW_ORDER_ADMIN: 'new-order-admin',
+  TECHNICIAN_ASSIGNED: 'technician-assigned',
+  ORDER_ASSIGNED_TECH: 'order-assigned-tech',
+  ORDER_CANCELLED: 'order-cancelled',
+  NEW_MESSAGE_TECH: 'new-message-tech',
+  RECEIPT_CREATED: 'receipt-created',
 };
 
 class SMSService {
@@ -82,26 +81,17 @@ class SMSService {
   }
 
   /**
-   * Send new order confirmation to customer
-   * Template: ordernewcustomer
-   * Pattern: سفارش %token با موفقیت ثبت شد
-   */
-  async sendNewOrderToCustomer(phone: string, orderNumber: string): Promise<boolean> {
-    return this.sendTemplate(phone, TEMPLATES.ORDER_NEW_CUSTOMER, orderNumber);
-  }
-
-  /**
    * Send new order notification to admin
-   * Template: ordernewadmin
+   * Template: new-order-admin
    * Pattern: سفارش جدید %token از مشتری %token2
    */
   async sendNewOrderToAdmin(phone: string, orderNumber: string, customerName: string): Promise<boolean> {
-    return this.sendTemplate(phone, TEMPLATES.ORDER_NEW_ADMIN, orderNumber, customerName);
+    return this.sendTemplate(phone, TEMPLATES.NEW_ORDER_ADMIN, orderNumber, customerName);
   }
 
   /**
    * Send technician assignment notification to customer
-   * Template: orderassignedcustomer
+   * Template: technician-assigned
    * Pattern: تکنسین %token برای سفارش %token2 اختصاص یافت
    */
   async sendTechnicianAssigned(
@@ -109,12 +99,12 @@ class SMSService {
     orderNumber: string,
     technicianName: string
   ): Promise<boolean> {
-    return this.sendTemplate(phone, TEMPLATES.ORDER_ASSIGNED_CUSTOMER, technicianName, orderNumber);
+    return this.sendTemplate(phone, TEMPLATES.TECHNICIAN_ASSIGNED, technicianName, orderNumber);
   }
 
   /**
    * Send order assignment notification to technician
-   * Template: orderassignedtechnician
+   * Template: order-assigned-tech
    * Pattern: سفارش %token به شما اختصاص یافت. مشتری: %token2. مشکلات: %token3
    */
   async sendOrderAssignedToTechnician(
@@ -126,7 +116,7 @@ class SMSService {
     const issuesList = issues.slice(0, 3).join('-');
     return this.sendTemplate(
       phone,
-      TEMPLATES.ORDER_ASSIGNED_TECHNICIAN,
+      TEMPLATES.ORDER_ASSIGNED_TECH,
       orderNumber,
       customerName,
       issuesList
@@ -135,7 +125,7 @@ class SMSService {
 
   /**
    * Send order status update notification
-   * Template: orderstatus
+   * Template: order-status
    * Pattern: وضعیت سفارش %token: %token2
    */
   async sendOrderUpdate(phone: string, orderNumber: string, status: string): Promise<boolean> {
@@ -144,7 +134,7 @@ class SMSService {
 
   /**
    * Send order cancellation notification
-   * Template: ordercancelled
+   * Template: order-cancelled
    * Pattern: سفارش %token توسط مشتری لغو شد
    */
   async sendOrderCancelled(phone: string, orderNumber: string, role: 'admin' | 'technician'): Promise<boolean> {
@@ -153,16 +143,16 @@ class SMSService {
 
   /**
    * Send new message notification to technician
-   * Template: newmessage
+   * Template: new-message-tech
    * Pattern: پیام جدید از %token برای سفارش %token2
    */
   async sendNewMessageToTechnician(phone: string, customerName: string, orderNumber: string): Promise<boolean> {
-    return this.sendTemplate(phone, TEMPLATES.NEW_MESSAGE, customerName, orderNumber);
+    return this.sendTemplate(phone, TEMPLATES.NEW_MESSAGE_TECH, customerName, orderNumber);
   }
 
   /**
    * Send receipt notification to customer
-   * Template: receiptcreated
+   * Template: receipt-created
    * Pattern: فاکتور %token به مبلغ %token2 تومان صادر شد
    */
   async sendReceiptCreated(phone: string, receiptNumber: string, amount: number): Promise<boolean> {
