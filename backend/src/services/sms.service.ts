@@ -35,8 +35,12 @@ class SMSService {
    */
   private sanitizeToken(value: string): string {
     if (!value) return '';
-    // Replace spaces with dash and remove any problematic characters
-    return value.trim().replace(/\s+/g, '-');
+    // Remove ZWNJ (نیم‌فاصله), zero-width spaces, and other problematic Unicode chars
+    // Then replace regular spaces with dash
+    return value
+      .trim()
+      .replace(/[\u200B-\u200D\u200C\uFEFF]/g, '') // Remove zero-width chars including ZWNJ
+      .replace(/\s+/g, '-'); // Replace spaces with dash
   }
 
   /**
