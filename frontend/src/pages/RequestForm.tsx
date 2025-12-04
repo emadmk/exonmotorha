@@ -565,11 +565,16 @@ export function RequestForm() {
                         onChange={(e) =>
                           setNewVehicle({ ...newVehicle, brand: e.target.value })
                         }
-                        className="input-field w-full"
+                        className={cn(
+                          'input-field w-full',
+                          !newVehicle.brand && 'text-dark-500'
+                        )}
                       >
-                        <option value="">انتخاب برند</option>
+                        <option value="" disabled className="text-dark-500">
+                          انتخاب برند
+                        </option>
                         {CAR_BRANDS.map((brand) => (
-                          <option key={brand.value} value={brand.value}>
+                          <option key={brand.value} value={brand.value} className="text-white">
                             {brand.label}
                           </option>
                         ))}
@@ -604,11 +609,16 @@ export function RequestForm() {
                         onChange={(e) =>
                           setNewVehicle({ ...newVehicle, year: e.target.value })
                         }
-                        className="input-field w-full"
+                        className={cn(
+                          'input-field w-full',
+                          !newVehicle.year && 'text-dark-500'
+                        )}
                       >
-                        <option value="">انتخاب سال</option>
+                        <option value="" disabled className="text-dark-500">
+                          انتخاب سال
+                        </option>
                         {CAR_YEARS.map((year) => (
-                          <option key={year.value} value={year.value}>
+                          <option key={year.value} value={year.value} className="text-white">
                             {year.label}
                           </option>
                         ))}

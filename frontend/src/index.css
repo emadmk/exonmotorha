@@ -90,6 +90,32 @@
     @apply border-red-500 focus:border-red-500 focus:ring-red-500/50;
   }
 
+  /* Custom Select/Dropdown */
+  .input-field,
+  .select-field {
+    @apply w-full px-4 py-3 bg-dark-900 border border-dark-700 rounded-xl text-white;
+    @apply transition-all duration-300 cursor-pointer;
+    @apply focus:outline-none focus:border-gold-600 focus:ring-1 focus:ring-gold-600/50;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23d4af37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 12px center;
+    background-size: 20px;
+    padding-left: 44px;
+  }
+
+  .input-field option,
+  .select-field option {
+    @apply bg-dark-900 text-white py-3;
+  }
+
+  .input-field:hover,
+  .select-field:hover {
+    @apply border-dark-600;
+  }
+
   /* OTP Input */
   .otp-input {
     @apply w-12 h-14 text-center text-2xl font-bold bg-dark-900 border border-dark-700 rounded-xl text-white;

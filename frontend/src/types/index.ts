@@ -243,6 +243,7 @@ export interface PublicStats {
 export const ISSUE_TYPES = [
   'تصادف',
   'خرابی موتور',
+  'تعمیر گیربکس',
   'پنچری',
   'باتری',
   'سرویس دوره‌ای',
