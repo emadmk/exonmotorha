@@ -7,6 +7,7 @@ import messageRoutes from './message.routes';
 import receiptRoutes from './receipt.routes';
 import notificationRoutes from './notification.routes';
 import adminRoutes from './admin.routes';
+import activityLogRoutes from './activityLog.routes';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/messages', messageRoutes);
 router.use('/receipts', receiptRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
+router.use('/activity-logs', activityLogRoutes);
 
 export default router;

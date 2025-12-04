@@ -16,6 +16,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
 import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage';
+import { ActivityLogPage } from './pages/ActivityLogPage';
 import { AddressesPage } from './pages/AddressesPage';
 import { CardsPage } from './pages/CardsPage';
 
@@ -198,6 +199,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminOrderDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/activity-logs"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ActivityLogPage />
             </ProtectedRoute>
           }
         />

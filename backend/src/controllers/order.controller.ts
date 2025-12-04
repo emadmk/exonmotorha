@@ -3,6 +3,7 @@ import { Order, Vehicle, User, Technician, Notification, defaultTimelineSteps } 
 import { AuthRequest } from '../middleware/auth.middleware';
 import { calculateProgress } from '../utils/helpers';
 import { smsService } from '../services/sms.service';
+import { activityLogService } from '../services/activityLog.service';
 import { orderStatuses } from '../config';
 import mongoose from 'mongoose';
 
@@ -111,6 +112,17 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         );
       }
     }
+
+    // Log activity
+    await activityLogService.logOrder({
+      action: 'create',
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      userId: userId!,
+      userName: customer?.name || 'مشتری',
+      userRole: 'customer',
+      metadata: { issues, vehicleId },
+    });
 
     res.status(201).json({
       success: true,
@@ -356,6 +368,18 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       }
     }
 
+    // Log activity
+    const customer = await User.findById(userId);
+    await activityLogService.logOrder({
+      action: 'cancel',
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      userId: userId!,
+      userName: customer?.name || 'مشتری',
+      userRole: 'customer',
+      metadata: { reason },
+    });
+
     res.status(200).json({
       success: true,
       message: 'سفارش لغو شد',
@@ -472,6 +496,19 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       relatedOrderId: order._id,
     });
 
+    // Log activity
+    const admin = await User.findById(req.userId);
+    await activityLogService.logOrder({
+      action: 'status_change',
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      userId: req.userId!,
+      userName: admin?.name || 'ادمین',
+      userRole: 'admin',
+      description: `تغییر وضعیت سفارش ${order.orderNumber} به ${orderStatuses[status as keyof typeof orderStatuses]}`,
+      metadata: { oldStatus: order.status, newStatus: status },
+    });
+
     res.status(200).json({
       success: true,
       message: 'وضعیت سفارش به‌روزرسانی شد',
@@ -575,6 +612,19 @@ export const assignTechnician = async (req: AuthRequest, res: Response): Promise
       message: `تکنسین ${technician.name} به سفارش شما اختصاص یافت`,
       type: 'order_update',
       relatedOrderId: order._id,
+    });
+
+    // Log activity
+    const admin = await User.findById(req.userId);
+    await activityLogService.logOrder({
+      action: 'assign',
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      userId: req.userId!,
+      userName: admin?.name || 'ادمین',
+      userRole: 'admin',
+      description: `اختصاص تکنسین ${technician.name} به سفارش ${order.orderNumber}`,
+      metadata: { technicianId, technicianName: technician.name },
     });
 
     res.status(200).json({
@@ -802,6 +852,21 @@ export const editOrder = async (req: AuthRequest, res: Response): Promise<void> 
 
     // Repopulate for response
     await order.populate('changelog.changedBy', 'name');
+
+    // Log activity
+    if (changelog.length > 0) {
+      const admin = await User.findById(adminId);
+      await activityLogService.logOrder({
+        action: 'edit',
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber,
+        userId: adminId!,
+        userName: admin?.name || 'ادمین',
+        userRole: 'admin',
+        description: `ویرایش سفارش ${order.orderNumber}: ${changelog.map(c => fieldLabels[c.field] || c.field).join('، ')}`,
+        metadata: { changes: changelog },
+      });
+    }
 
     res.status(200).json({
       success: true,

@@ -27,6 +27,7 @@ import {
   Edit,
   UserCog,
   Send,
+  Activity,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -129,6 +130,7 @@ export function AdminDashboard() {
     { id: 'users', label: 'کاربران', icon: UserCog },
     { id: 'chats', label: 'پیام‌ها', icon: MessageSquare },
     { id: 'technicians', label: 'تکنسین‌ها', icon: Wrench },
+    { id: 'activity-logs', label: 'لاگ فعالیت', icon: Activity, link: '/admin/activity-logs' },
     { id: 'settings', label: 'تنظیمات', icon: Settings },
   ];
 
@@ -152,7 +154,13 @@ export function AdminDashboard() {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id as Tab)}
+              onClick={() => {
+                if ('link' in item && item.link) {
+                  navigate(item.link);
+                } else {
+                  setActiveTab(item.id as Tab);
+                }
+              }}
               className={cn(
                 'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all',
                 activeTab === item.id
@@ -204,7 +212,13 @@ export function AdminDashboard() {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id as Tab)}
+              onClick={() => {
+                if ('link' in item && item.link) {
+                  navigate(item.link);
+                } else {
+                  setActiveTab(item.id as Tab);
+                }
+              }}
               className={cn(
                 'flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm',
                 activeTab === item.id

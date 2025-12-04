@@ -185,4 +185,20 @@ export const adminAPI = {
   sendBroadcast: (data: any) => api.post('/admin/broadcast', data),
 };
 
+// Activity Log API
+export const activityLogAPI = {
+  getLogs: (params?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    performerRole?: string;
+    action?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get('/activity-logs', { params }),
+  getStats: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/activity-logs/stats', { params }),
+};
+
 export default api;

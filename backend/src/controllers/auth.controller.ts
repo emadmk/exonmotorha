@@ -3,6 +3,7 @@ import { User, OTP, UserSettings } from '../models';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt';
 import { generateOTPCode, formatPhoneNumber, isValidIranianPhone } from '../utils/helpers';
 import { smsService } from '../services/sms.service';
+import { activityLogService } from '../services/activityLog.service';
 import { otpConfig } from '../config';
 import { AuthRequest } from '../middleware/auth.middleware';
 
@@ -178,6 +179,17 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
     user.refreshToken = tokens.refreshToken;
     await user.save();
 
+    // Log activity
+    await activityLogService.logAuth({
+      action: isNewUser ? 'register' : 'login',
+      userId: user._id.toString(),
+      userName: user.name,
+      userRole: user.role as 'customer' | 'technician' | 'admin',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      success: true,
+    });
+
     res.status(200).json({
       success: true,
       message: isNewUser ? 'ثبت‌نام با موفقیت انجام شد' : 'ورود موفقیت‌آمیز',
@@ -259,6 +271,17 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 export const logout = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (req.user) {
+      // Log activity
+      await activityLogService.logAuth({
+        action: 'logout',
+        userId: req.user._id.toString(),
+        userName: req.user.name,
+        userRole: req.user.role as 'customer' | 'technician' | 'admin',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        success: true,
+      });
+
       req.user.refreshToken = undefined;
       await req.user.save();
     }
