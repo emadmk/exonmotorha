@@ -33,9 +33,9 @@ import { toPersianDigits, formatNumber } from '../utils/helpers';
 const services = [
   { icon: AlertTriangle, title: 'تصادف', description: 'امداد در تصادفات و ارزیابی خسارت' },
   { icon: Cog, title: 'خرابی موتور', description: 'تعمیر انواع خرابی‌های موتور' },
+  { icon: Settings, title: 'تعمیر گیربکس', description: 'تعمیر و سرویس گیربکس اتوماتیک و دستی' },
   { icon: Car, title: 'پنچری', description: 'تعویض و تعمیر لاستیک در محل' },
   { icon: Battery, title: 'باتری', description: 'تعویض و شارژ باتری' },
-  { icon: Settings, title: 'سرویس دوره‌ای', description: 'سرویس کامل خودرو' },
   { icon: Volume2, title: 'صدای غیرعادی', description: 'تشخیص و رفع صداهای مشکوک' },
   { icon: Zap, title: 'مشکل برقی', description: 'تعمیر سیستم برق خودرو' },
   { icon: Wrench, title: 'تعمیر بدنه', description: 'تعمیرات جزئی بدنه' },
@@ -141,9 +141,7 @@ export function Landing() {
             </h1>
 
             <p className="text-lg md:text-xl text-dark-300 max-w-2xl mx-auto mb-10">
-              با یک کلیک، تکنسین متخصص را به محل خود فراخوانید.
-              <br />
-              سریع، مطمئن و با ضمانت کیفیت.
+              با یک کلیک ماشینت در خونه تحویل میگیریم و همه کارهاش انجام میشه و در خونه تحویل بگیر
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

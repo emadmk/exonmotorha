@@ -139,11 +139,9 @@ export function AdminDashboard() {
         {/* Logo */}
         <div className="p-6 border-b border-dark-700/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-gold rounded-xl flex items-center justify-center">
-              <span className="text-dark-950 font-bold">اکسون</span>
-            </div>
+            <span className="text-2xl font-bold gradient-text">اکسون</span>
             <div>
-              <p className="font-bold text-white">اکسون موتور</p>
+              <p className="font-bold text-white">موتور</p>
               <p className="text-xs text-dark-400">پنل مدیریت</p>
             </div>
           </div>
@@ -193,9 +191,7 @@ export function AdminDashboard() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-dark-900 border-b border-dark-700/50">
         <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-gold rounded-lg flex items-center justify-center">
-              <span className="text-dark-950 font-bold text-sm">اکسون</span>
-            </div>
+            <span className="text-xl font-bold gradient-text">اکسون</span>
             <span className="font-bold text-white">پنل مدیریت</span>
           </div>
           <button onClick={handleLogout} className="p-2 text-dark-400">
@@ -233,7 +229,12 @@ export function AdminDashboard() {
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <GlassCard padding="md">
+                <GlassCard
+                  padding="md"
+                  hoverable
+                  onClick={() => { setActiveTab('orders'); setStatusFilter('all'); }}
+                  className="cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-amber-600/20 rounded-xl flex items-center justify-center">
                       <Calendar className="w-6 h-6 text-amber-400" />
@@ -247,7 +248,12 @@ export function AdminDashboard() {
                   </div>
                 </GlassCard>
 
-                <GlassCard padding="md">
+                <GlassCard
+                  padding="md"
+                  hoverable
+                  onClick={() => { setActiveTab('orders'); setStatusFilter('in_progress'); }}
+                  className="cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center">
                       <Clock className="w-6 h-6 text-blue-400" />
@@ -261,7 +267,12 @@ export function AdminDashboard() {
                   </div>
                 </GlassCard>
 
-                <GlassCard padding="md">
+                <GlassCard
+                  padding="md"
+                  hoverable
+                  onClick={() => { setActiveTab('orders'); setStatusFilter('waiting_for_parts'); }}
+                  className="cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center">
                       <Package className="w-6 h-6 text-purple-400" />
@@ -275,7 +286,12 @@ export function AdminDashboard() {
                   </div>
                 </GlassCard>
 
-                <GlassCard padding="md">
+                <GlassCard
+                  padding="md"
+                  hoverable
+                  onClick={() => { setActiveTab('orders'); setStatusFilter('completed'); }}
+                  className="cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-emerald-600/20 rounded-xl flex items-center justify-center">
                       <CheckCircle className="w-6 h-6 text-emerald-400" />

@@ -37,6 +37,34 @@ const steps = [
   { id: 'location', title: 'موقعیت مکانی' },
 ];
 
+// Car brands
+const CAR_BRANDS = [
+  { value: 'fownix', label: 'فونیکس (Fownix)' },
+  { value: 'mvm', label: 'ام‌وی‌ام (MVM)' },
+  { value: 'toyota', label: 'تویوتا (Toyota)' },
+  { value: 'nissan', label: 'نیسان (Nissan)' },
+  { value: 'bmw', label: 'بی‌ام‌و (BMW)' },
+  { value: 'benz', label: 'بنز (Benz)' },
+  { value: 'ikco', label: 'ایران‌خودرو (IKCO)' },
+  { value: 'saipa', label: 'سایپا (Saipa)' },
+  { value: 'other', label: 'سایر' },
+];
+
+// Generate years from 1370 to 1404 (1992 to 2025)
+const generateYears = () => {
+  const years = [];
+  for (let shamsi = 1370; shamsi <= 1404; shamsi++) {
+    const miladi = shamsi + 621;
+    years.push({
+      value: miladi.toString(),
+      label: `${toPersianDigits(shamsi)} - ${miladi}`,
+    });
+  }
+  return years.reverse(); // Most recent first
+};
+
+const CAR_YEARS = generateYears();
+
 // Default center: Tehran
 const DEFAULT_LAT = 35.6892;
 const DEFAULT_LNG = 51.3890;
@@ -58,6 +86,7 @@ export function RequestForm() {
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
   const [newVehicle, setNewVehicle] = useState({
     brand: '',
+    customBrand: '',
     model: '',
     year: '',
     plateNumber: '',
@@ -147,7 +176,8 @@ export function RequestForm() {
   };
 
   const handleCreateVehicle = async () => {
-    if (!newVehicle.brand || !newVehicle.model || !newVehicle.year) {
+    const brandValue = newVehicle.brand === 'other' ? newVehicle.customBrand : newVehicle.brand;
+    if (!brandValue || !newVehicle.model || !newVehicle.year) {
       setError('لطفاً اطلاعات خودرو را کامل کنید');
       return;
     }
@@ -156,8 +186,13 @@ export function RequestForm() {
     setError('');
 
     try {
+      // Get the brand label for known brands
+      const brandLabel = newVehicle.brand === 'other'
+        ? newVehicle.customBrand
+        : CAR_BRANDS.find(b => b.value === newVehicle.brand)?.label.split(' ')[0] || newVehicle.brand;
+
       const response = await vehicleAPI.create({
-        brand: newVehicle.brand,
+        brand: brandLabel,
         model: newVehicle.model,
         year: parseInt(toEnglishDigits(newVehicle.year)),
         plateNumber: newVehicle.plateNumber,
@@ -280,7 +315,8 @@ export function RequestForm() {
       case 'otp':
         return otp.length === 5;
       case 'vehicle':
-        return selectedVehicle || (newVehicle.brand && newVehicle.model && newVehicle.year);
+        const hasBrand = newVehicle.brand && (newVehicle.brand !== 'other' || newVehicle.customBrand);
+        return selectedVehicle || (hasBrand && newVehicle.model && newVehicle.year);
       case 'issues':
         return selectedIssues.length > 0;
       case 'location':
@@ -521,13 +557,37 @@ export function RequestForm() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Input
-                      placeholder="برند (مثلاً: کیا)"
-                      value={newVehicle.brand}
-                      onChange={(e) =>
-                        setNewVehicle({ ...newVehicle, brand: e.target.value })
-                      }
-                    />
+                    {/* Brand Dropdown */}
+                    <div>
+                      <label className="block text-sm text-dark-400 mb-2">برند خودرو</label>
+                      <select
+                        value={newVehicle.brand}
+                        onChange={(e) =>
+                          setNewVehicle({ ...newVehicle, brand: e.target.value })
+                        }
+                        className="input-field w-full"
+                      >
+                        <option value="">انتخاب برند</option>
+                        {CAR_BRANDS.map((brand) => (
+                          <option key={brand.value} value={brand.value}>
+                            {brand.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Custom Brand Input (when "other" is selected) */}
+                    {newVehicle.brand === 'other' && (
+                      <Input
+                        placeholder="نام برند خودرو را وارد کنید"
+                        value={newVehicle.customBrand || ''}
+                        onChange={(e) =>
+                          setNewVehicle({ ...newVehicle, customBrand: e.target.value })
+                        }
+                      />
+                    )}
+
+                    {/* Model Input */}
                     <Input
                       placeholder="مدل (مثلاً: سورنتو)"
                       value={newVehicle.model}
@@ -535,13 +595,27 @@ export function RequestForm() {
                         setNewVehicle({ ...newVehicle, model: e.target.value })
                       }
                     />
-                    <Input
-                      placeholder="سال ساخت (مثلاً: ۱۴۰۰)"
-                      value={newVehicle.year}
-                      onChange={(e) =>
-                        setNewVehicle({ ...newVehicle, year: e.target.value })
-                      }
-                    />
+
+                    {/* Year Dropdown */}
+                    <div>
+                      <label className="block text-sm text-dark-400 mb-2">سال ساخت</label>
+                      <select
+                        value={newVehicle.year}
+                        onChange={(e) =>
+                          setNewVehicle({ ...newVehicle, year: e.target.value })
+                        }
+                        className="input-field w-full"
+                      >
+                        <option value="">انتخاب سال</option>
+                        {CAR_YEARS.map((year) => (
+                          <option key={year.value} value={year.value}>
+                            {year.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Plate Number */}
                     <Input
                       placeholder="شماره پلاک (اختیاری)"
                       value={newVehicle.plateNumber}
@@ -555,7 +629,11 @@ export function RequestForm() {
                     <Button
                       onClick={handleCreateVehicle}
                       isLoading={isLoading}
-                      disabled={!newVehicle.brand || !newVehicle.model || !newVehicle.year}
+                      disabled={
+                        (!newVehicle.brand || (newVehicle.brand === 'other' && !newVehicle.customBrand)) ||
+                        !newVehicle.model ||
+                        !newVehicle.year
+                      }
                       fullWidth
                     >
                       ثبت و ادامه

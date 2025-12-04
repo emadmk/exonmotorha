@@ -223,7 +223,7 @@ export function Auth() {
             </h1>
             <p className="text-dark-400">
               {step === 'phone' && 'شماره موبایل خود را وارد کنید'}
-              {step === 'otp' && `کد تایید به ${formatPhoneDisplay(phone)} ارسال شد`}
+              {step === 'otp' && <>کد تایید به <span dir="ltr" className="inline-block">{formatPhoneDisplay(phone)}</span> ارسال شد</>}
               {step === 'register' && 'لطفاً اطلاعات خود را وارد کنید'}
             </p>
           </div>

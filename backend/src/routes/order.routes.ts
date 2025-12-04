@@ -62,4 +62,7 @@ router.put('/:orderId/timeline/:stepId', authorize('admin', 'technician'), order
 // PUT /api/orders/:orderId/cost - Update cost estimate
 router.put('/:orderId/cost', authorize('admin'), orderController.updateCostEstimate);
 
+// PUT /api/orders/:orderId/edit - Edit order with changelog
+router.put('/:orderId/edit', authorize('admin'), orderController.editOrder);
+
 export default router;

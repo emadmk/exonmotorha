@@ -31,6 +31,16 @@ export interface IOrderPhoto {
   uploadedBy: mongoose.Types.ObjectId;
 }
 
+export interface IOrderChangelog {
+  _id?: mongoose.Types.ObjectId;
+  field: string;
+  oldValue: string;
+  newValue: string;
+  changedBy: mongoose.Types.ObjectId;
+  changedAt: Date;
+  note?: string;
+}
+
 export interface IOrder extends Document {
   _id: mongoose.Types.ObjectId;
   orderNumber: string;
@@ -52,6 +62,7 @@ export interface IOrder extends Document {
   notes?: string;
   adminNotes?: string;
   photos: IOrderPhoto[];
+  changelog: IOrderChangelog[];
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -87,6 +98,22 @@ const orderPhotoSchema = new Schema<IOrderPhoto>(
       ref: 'User',
       required: true,
     },
+  },
+  { _id: true }
+);
+
+const orderChangelogSchema = new Schema<IOrderChangelog>(
+  {
+    field: { type: String, required: true },
+    oldValue: { type: String, required: true },
+    newValue: { type: String, required: true },
+    changedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    changedAt: { type: Date, default: Date.now },
+    note: { type: String },
   },
   { _id: true }
 );
@@ -167,6 +194,10 @@ const orderSchema = new Schema<IOrder>(
     },
     photos: {
       type: [orderPhotoSchema],
+      default: [],
+    },
+    changelog: {
+      type: [orderChangelogSchema],
       default: [],
     },
     completedAt: {

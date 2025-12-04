@@ -128,6 +128,7 @@ export const orderAPI = {
   updateTimeline: (orderId: string, stepId: string, data: any) =>
     api.put(`/orders/${orderId}/timeline/${stepId}`, data),
   updateCost: (id: string, data: any) => api.put(`/orders/${id}/cost`, data),
+  editOrder: (id: string, data: any) => api.put(`/orders/${id}/edit`, data),
 };
 
 // Message API

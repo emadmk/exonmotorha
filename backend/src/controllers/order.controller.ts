@@ -670,6 +670,155 @@ export const updateTimelineStep = async (req: AuthRequest, res: Response): Promi
 };
 
 /**
+ * Edit order details (Admin) with changelog
+ */
+export const editOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+    const adminId = req.userId;
+    const { issues, description, location, scheduledDate, scheduledTime, note } = req.body;
+
+    const order = await Order.findById(orderId).populate('userId', 'phone name');
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        message: 'سفارش یافت نشد',
+      });
+      return;
+    }
+
+    const changelog: any[] = [];
+    const fieldLabels: Record<string, string> = {
+      issues: 'مشکلات',
+      description: 'توضیحات',
+      'location.address': 'آدرس',
+      scheduledDate: 'تاریخ مراجعه',
+      scheduledTime: 'زمان مراجعه',
+    };
+
+    // Track changes for issues
+    if (issues && JSON.stringify(issues) !== JSON.stringify(order.issues)) {
+      changelog.push({
+        field: 'issues',
+        oldValue: order.issues.join('، '),
+        newValue: issues.join('، '),
+        changedBy: new mongoose.Types.ObjectId(adminId),
+        changedAt: new Date(),
+        note,
+      });
+      order.issues = issues;
+    }
+
+    // Track changes for description
+    if (description !== undefined && description !== (order.description || '')) {
+      changelog.push({
+        field: 'description',
+        oldValue: order.description || '-',
+        newValue: description || '-',
+        changedBy: new mongoose.Types.ObjectId(adminId),
+        changedAt: new Date(),
+        note,
+      });
+      order.description = description;
+    }
+
+    // Track changes for location
+    if (location) {
+      const oldAddress = order.location?.address || '-';
+      if (location.address && location.address !== oldAddress) {
+        changelog.push({
+          field: 'location.address',
+          oldValue: oldAddress,
+          newValue: location.address,
+          changedBy: new mongoose.Types.ObjectId(adminId),
+          changedAt: new Date(),
+          note,
+        });
+        if (!order.location) {
+          order.location = { address: '' };
+        }
+        order.location.address = location.address;
+        if (location.coordinates) {
+          order.location.coordinates = location.coordinates;
+        }
+      }
+    }
+
+    // Track changes for scheduled date
+    if (scheduledDate !== undefined) {
+      const oldDate = order.scheduledDate ? new Date(order.scheduledDate).toLocaleDateString('fa-IR') : '-';
+      const newDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('fa-IR') : '-';
+      if (oldDate !== newDate) {
+        changelog.push({
+          field: 'scheduledDate',
+          oldValue: oldDate,
+          newValue: newDate,
+          changedBy: new mongoose.Types.ObjectId(adminId),
+          changedAt: new Date(),
+          note,
+        });
+        order.scheduledDate = scheduledDate ? new Date(scheduledDate) : undefined;
+      }
+    }
+
+    // Track changes for scheduled time
+    if (scheduledTime !== undefined && scheduledTime !== (order.scheduledTime || '')) {
+      changelog.push({
+        field: 'scheduledTime',
+        oldValue: order.scheduledTime || '-',
+        newValue: scheduledTime || '-',
+        changedBy: new mongoose.Types.ObjectId(adminId),
+        changedAt: new Date(),
+        note,
+      });
+      order.scheduledTime = scheduledTime;
+    }
+
+    // Add changelog entries
+    if (changelog.length > 0) {
+      order.changelog = [...(order.changelog || []), ...changelog];
+      await order.save();
+
+      // Notify customer about changes
+      const customer = order.userId as any;
+      await Notification.create({
+        userId: order.userId,
+        title: 'ویرایش سفارش',
+        message: `اطلاعات سفارش ${order.orderNumber} ویرایش شد: ${changelog.map(c => fieldLabels[c.field] || c.field).join('، ')}`,
+        type: 'order_update',
+        relatedOrderId: order._id,
+      });
+
+      // Send SMS to customer
+      if (customer?.phone) {
+        await smsService.sendOrderUpdate(
+          customer.phone,
+          order.orderNumber,
+          `اطلاعات سفارش ویرایش شد: ${changelog.map(c => fieldLabels[c.field] || c.field).join('، ')}`
+        );
+      }
+    }
+
+    // Repopulate for response
+    await order.populate('changelog.changedBy', 'name');
+
+    res.status(200).json({
+      success: true,
+      message: changelog.length > 0 ? 'سفارش با موفقیت ویرایش شد' : 'تغییری اعمال نشد',
+      order,
+      changes: changelog.length,
+    });
+  } catch (error) {
+    console.error('Edit order error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطا در ویرایش سفارش',
+    });
+  }
+};
+
+/**
  * Update order cost estimate (Admin)
  */
 export const updateCostEstimate = async (req: AuthRequest, res: Response): Promise<void> => {

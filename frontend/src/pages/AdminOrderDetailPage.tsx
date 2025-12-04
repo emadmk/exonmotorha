@@ -16,6 +16,11 @@ import {
   UserCheck,
   AlertCircle,
   Save,
+  Edit2,
+  History,
+  X,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { StatusChip } from '../components/ui/StatusChip';
@@ -24,6 +29,12 @@ import { Input } from '../components/ui/Input';
 import { orderAPI, adminAPI } from '../services/api';
 import { Order, OrderStatus } from '../types';
 import { cn, formatCurrency, formatDateSmart, toPersianDigits } from '../utils/helpers';
+
+// Available issues for selection
+const AVAILABLE_ISSUES = [
+  'تصادف', 'خرابی موتور', 'تعمیر گیربکس', 'پنچری', 'باتری',
+  'صدای غیرعادی', 'مشکل برقی', 'تعمیر بدنه', 'سرویس دوره‌ای', 'سایر'
+];
 
 interface Technician {
   _id: string;
@@ -59,6 +70,17 @@ export function AdminOrderDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | ''>('');
   const [adminNotes, setAdminNotes] = useState('');
   const [selectedTechnician, setSelectedTechnician] = useState<string>('');
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    issues: [] as string[],
+    description: '',
+    locationAddress: '',
+    note: '',
+  });
+  const [showChangelogModal, setShowChangelogModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -125,6 +147,49 @@ export function AdminOrderDetailPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleOpenEditModal = () => {
+    if (!order) return;
+    setEditFormData({
+      issues: [...order.issues],
+      description: order.description || '',
+      locationAddress: order.location?.address || '',
+      note: '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!order) return;
+    setIsEditing(true);
+    try {
+      await orderAPI.editOrder(order._id, {
+        issues: editFormData.issues,
+        description: editFormData.description,
+        location: { address: editFormData.locationAddress },
+        note: editFormData.note,
+      });
+      setShowEditModal(false);
+      loadOrder();
+    } catch (error) {
+      console.error('Error editing order:', error);
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleAddIssue = (issue: string) => {
+    if (!editFormData.issues.includes(issue)) {
+      setEditFormData({ ...editFormData, issues: [...editFormData.issues, issue] });
+    }
+  };
+
+  const handleRemoveIssue = (issue: string) => {
+    setEditFormData({
+      ...editFormData,
+      issues: editFormData.issues.filter(i => i !== issue),
+    });
   };
 
   const getVehicleInfo = () => {
@@ -209,7 +274,18 @@ export function AdminOrderDetailPage() {
               {formatDateSmart(order.createdAt)}
             </p>
           </div>
-          <StatusChip status={order.status} size="lg" />
+          <div className="flex items-center gap-3">
+            {order.changelog && order.changelog.length > 0 && (
+              <button
+                onClick={() => setShowChangelogModal(true)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-dark-800 rounded-lg text-dark-400 hover:text-white text-sm"
+              >
+                <History className="w-4 h-4" />
+                تاریخچه ({toPersianDigits(order.changelog.length)})
+              </button>
+            )}
+            <StatusChip status={order.status} size="lg" />
+          </div>
         </div>
       </header>
 
@@ -276,10 +352,19 @@ export function AdminOrderDetailPage() {
 
         {/* Issues */}
         <GlassCard padding="md">
-          <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-gold-500" />
-            مشکلات گزارش شده
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-gold-500" />
+              مشکلات گزارش شده
+            </h3>
+            <button
+              onClick={handleOpenEditModal}
+              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm"
+            >
+              <Edit2 className="w-4 h-4" />
+              ویرایش
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {order.issues.map((issue, i) => (
               <span
@@ -461,6 +546,166 @@ export function AdminOrderDetailPage() {
                         </div>
                       </div>
                     </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-dark-900 rounded-2xl w-full max-w-lg border border-dark-700 max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-dark-700">
+              <h3 className="text-lg font-semibold text-white">ویرایش سفارش</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto max-h-[60vh] space-y-4">
+              {/* Issues */}
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">مشکلات</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {editFormData.issues.map((issue, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1.5 bg-dark-800 rounded-lg text-sm text-white flex items-center gap-2"
+                    >
+                      {issue}
+                      <button
+                        onClick={() => handleRemoveIssue(issue)}
+                        className="text-dark-400 hover:text-red-400"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {AVAILABLE_ISSUES.filter(i => !editFormData.issues.includes(i)).map((issue) => (
+                    <button
+                      key={issue}
+                      onClick={() => handleAddIssue(issue)}
+                      className="px-2 py-1 bg-dark-800/50 text-dark-400 rounded text-xs hover:bg-dark-700 hover:text-white"
+                    >
+                      + {issue}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">توضیحات</label>
+                <textarea
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  placeholder="توضیحات سفارش..."
+                  className="input w-full min-h-[80px] resize-none"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">آدرس</label>
+                <textarea
+                  value={editFormData.locationAddress}
+                  onChange={(e) => setEditFormData({ ...editFormData, locationAddress: e.target.value })}
+                  placeholder="آدرس مشتری..."
+                  className="input w-full min-h-[60px] resize-none"
+                />
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">یادداشت تغییر (نمایش به مشتری)</label>
+                <Input
+                  value={editFormData.note}
+                  onChange={(e) => setEditFormData({ ...editFormData, note: e.target.value })}
+                  placeholder="دلیل ویرایش..."
+                />
+              </div>
+
+              <Button
+                onClick={handleSaveEdit}
+                isLoading={isEditing}
+                disabled={editFormData.issues.length === 0}
+                fullWidth
+              >
+                <Save className="w-4 h-4 ml-2" />
+                ذخیره تغییرات
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Changelog Modal */}
+      {showChangelogModal && order?.changelog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-dark-900 rounded-2xl w-full max-w-lg border border-dark-700 max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-dark-700">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <History className="w-5 h-5" />
+                تاریخچه تغییرات
+              </h3>
+              <button
+                onClick={() => setShowChangelogModal(false)}
+                className="p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {order.changelog.length === 0 ? (
+                <p className="text-center text-dark-400 py-8">
+                  تغییری ثبت نشده است
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {[...order.changelog].reverse().map((log: any, i) => (
+                    <div key={i} className="p-3 bg-dark-800/50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-blue-400">
+                          {log.field === 'issues' && 'مشکلات'}
+                          {log.field === 'description' && 'توضیحات'}
+                          {log.field === 'location.address' && 'آدرس'}
+                          {log.field === 'scheduledDate' && 'تاریخ مراجعه'}
+                          {log.field === 'scheduledTime' && 'زمان مراجعه'}
+                        </span>
+                        <span className="text-xs text-dark-500">
+                          {formatDateSmart(log.changedAt)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-dark-500 text-xs">قبل:</span>
+                          <p className="text-dark-400 line-through">{log.oldValue}</p>
+                        </div>
+                        <div>
+                          <span className="text-dark-500 text-xs">بعد:</span>
+                          <p className="text-emerald-400">{log.newValue}</p>
+                        </div>
+                      </div>
+                      {log.note && (
+                        <p className="text-xs text-dark-500 mt-2 pt-2 border-t border-dark-700">
+                          یادداشت: {log.note}
+                        </p>
+                      )}
+                      {log.changedBy && (
+                        <p className="text-xs text-dark-600 mt-1">
+                          توسط: {typeof log.changedBy === 'object' ? log.changedBy.name : 'مدیر'}
+                        </p>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
